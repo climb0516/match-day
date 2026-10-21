@@ -1,0 +1,504 @@
+<!DOCTYPE html>
+<!-- Created by 青云 on 2026/10/21. -->
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="color-scheme" content="dark light">
+  <title>Match Day · 赛程</title>
+  <meta name="description" content="足球、篮球、综合赛事与电竞赛程比分，北京时间，转播频道，可订阅开赛提醒">
+  <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🏟️</text></svg>">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #090b0f;
+      --panel: #12161d;
+      --hover: rgba(255,255,255,0.04);
+      --line: rgba(255,255,255,0.07);
+      --line-2: rgba(255,255,255,0.14);
+      --text-1: #eef1f6;
+      --text-2: #9aa3b2;
+      --text-3: #636c7b;
+      --accent: #22c55e;
+      --grad: linear-gradient(120deg, #22c55e 0%, #06b6d4 55%, #6366f1 100%);
+      --football: #22c55e;
+      --basketball: #f97316;
+      --esports: #a78bfa;
+      --other: #38bdf8;
+      --live: #ef4444;
+      --star: #facc15;
+      --cn: #ef4444;
+      --shadow: 0 0 0 1px var(--line), 0 12px 32px rgba(0,0,0,0.35);
+      --input-bg: rgba(255,255,255,0.04);
+    }
+    :root[data-theme="light"] {
+      --bg: #f6f7fa;
+      --panel: #ffffff;
+      --hover: rgba(15,25,45,0.035);
+      --line: rgba(15,25,45,0.08);
+      --line-2: rgba(15,25,45,0.16);
+      --text-1: #121826;
+      --text-2: #4f5869;
+      --text-3: #959cab;
+      --accent: #16a34a;
+      --football: #16a34a;
+      --basketball: #ea580c;
+      --esports: #7c3aed;
+      --other: #0284c7;
+      --live: #dc2626;
+      --star: #ca8a04;
+      --cn: #dc2626;
+      --shadow: 0 0 0 1px var(--line), 0 10px 28px rgba(15,25,45,0.06);
+      --input-bg: rgba(15,25,45,0.03);
+    }
+
+    body {
+      background: var(--bg); color: var(--text-1);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+      font-size: 14px; line-height: 1.55; -webkit-font-smoothing: antialiased; min-height: 100vh;
+    }
+    a { color: inherit; text-decoration: none; }
+    button { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+    .num { font-variant-numeric: tabular-nums; }
+    .muted { color: var(--text-3); font-size: 12px; }
+
+    /* 顶栏 */
+    .topbar { position: sticky; top: 0; z-index: 20; background: color-mix(in srgb, var(--bg) 94%, transparent); border-bottom: 1px solid var(--line); }
+    .topbar-inner { max-width: 1240px; margin: 0 auto; padding: 12px 20px; display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
+    .logo { display: flex; align-items: center; gap: 10px; font-weight: 800; font-size: 17px; letter-spacing: -0.02em; white-space: nowrap; }
+    .logo-mark { width: 30px; height: 30px; border-radius: 9px; background: var(--grad); display: grid; place-items: center; font-size: 16px; }
+    .logo small { font-weight: 500; color: var(--text-3); font-size: 12px; margin-left: 2px; }
+    .seg { display: inline-flex; background: var(--hover); border: 1px solid var(--line); border-radius: 10px; padding: 3px; flex-wrap: wrap; }
+    .seg button { padding: 5px 12px; border-radius: 7px; font-size: 13px; color: var(--text-2); font-weight: 600; white-space: nowrap; }
+    .seg button:hover { color: var(--text-1); }
+    .seg button.active { background: var(--panel); color: var(--text-1); box-shadow: 0 0 0 1px var(--line-2); }
+    .spacer { flex: 1; }
+    .updated { font-size: 12px; color: var(--text-3); white-space: nowrap; }
+    .icon-btn { width: 34px; height: 34px; border-radius: 10px; border: 1px solid var(--line); display: grid; place-items: center; color: var(--text-2); flex-shrink: 0; }
+    .icon-btn:hover { color: var(--text-1); border-color: var(--line-2); }
+    .icon-btn.spin svg { animation: spin .8s linear infinite; }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .layout { max-width: 1240px; margin: 0 auto; padding: 22px 20px 60px; display: grid; grid-template-columns: minmax(0,1fr) 300px; gap: 22px; }
+    .aside { position: sticky; top: 76px; align-self: start; display: flex; flex-direction: column; gap: 14px; }
+    .panel { background: var(--panel); border-radius: 14px; box-shadow: var(--shadow); }
+    .widget { padding: 16px; }
+    .widget h3 { font-size: 13px; font-weight: 700; color: var(--text-2); margin-bottom: 12px; }
+    .view { display: none; }
+    .view.active { display: block; }
+
+    /* 筛选 */
+    .filters { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+    .chip { padding: 5px 12px; border-radius: 999px; border: 1px solid var(--line); color: var(--text-2); font-size: 12.5px; font-weight: 600; white-space: nowrap; }
+    .chip:hover { border-color: var(--line-2); color: var(--text-1); }
+    .chip.active { background: var(--text-1); color: var(--bg); border-color: var(--text-1); }
+    .chip small { font-weight: 500; opacity: .7; margin-left: 3px; }
+    .toggle { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-2); cursor: pointer; user-select: none; white-space: nowrap; }
+    .toggle input { accent-color: var(--accent); }
+
+    /* 时间线 */
+    .day { margin-bottom: 18px; }
+    .day-head { display: flex; align-items: baseline; gap: 8px; font-size: 15px; font-weight: 700; margin: 0 4px 8px; }
+    .day-head small { color: var(--text-3); font-weight: 500; font-size: 12px; }
+    .day-head.today { color: var(--accent); }
+    .list { overflow: hidden; }
+    .m { display: grid; grid-template-columns: 52px 150px minmax(0,1fr) auto 30px; gap: 12px; align-items: center; padding: 10px 14px; border-bottom: 1px solid var(--line); }
+    .m:last-child { border-bottom: 0; }
+    .m.fav { background: color-mix(in srgb, var(--star) 7%, transparent); }
+    .m.done { color: var(--text-2); }
+    .m-time { font-weight: 700; font-size: 13.5px; }
+    .m-time small { display: block; font-size: 10.5px; font-weight: 600; color: var(--text-3); }
+    .live-tag { display: inline-block; font-size: 10.5px; font-weight: 700; color: #fff; background: var(--live); border-radius: 5px; padding: 0 5px; animation: pulse 1.6s ease-in-out infinite; }
+    @keyframes pulse { 50% { opacity: .55; } }
+    .m-lg { min-width: 0; display: flex; flex-direction: column; }
+    .m-lg b { font-size: 12.5px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .m-lg b::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 2px; background: var(--c); margin-right: 6px; vertical-align: 1px; }
+    .m-lg span { font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .m-vs { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 10px; align-items: center; }
+    .m-vs .h { text-align: right; }
+    .team { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 6px; padding: 1px 4px; }
+    .team:hover { background: var(--hover); }
+    .team.star::after { content: " ★"; color: var(--star); }
+    .team.tbd { color: var(--text-3); font-weight: 500; }
+    .score { font-weight: 800; font-size: 15px; min-width: 54px; text-align: center; }
+    .score.vs { color: var(--text-3); font-weight: 600; font-size: 12px; }
+    .m-solo { font-weight: 600; }
+    .m-tv { font-size: 11.5px; color: var(--text-3); text-align: right; white-space: nowrap; max-width: 150px; overflow: hidden; text-overflow: ellipsis; }
+    .cn { font-size: 10px; font-weight: 700; color: var(--cn); border: 1px solid color-mix(in srgb, var(--cn) 50%, transparent); border-radius: 4px; padding: 0 3px; margin-left: 4px; vertical-align: 1px; }
+    .ics-btn { width: 28px; height: 28px; border-radius: 8px; display: grid; place-items: center; color: var(--text-3); }
+    .ics-btn:hover { background: var(--hover); color: var(--text-1); }
+    .more { display: block; width: 100%; padding: 10px; border-radius: 12px; border: 1px dashed var(--line-2); color: var(--text-2); font-weight: 600; font-size: 13px; }
+    .more:hover { color: var(--text-1); }
+    .empty { padding: 30px; text-align: center; color: var(--text-3); }
+
+    /* 联赛 */
+    .round-nav { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+    .round-nav b { flex: 1; text-align: center; font-size: 15px; }
+    .round-nav button { padding: 6px 12px; border-radius: 9px; border: 1px solid var(--line-2); font-weight: 600; font-size: 13px; }
+    .round-nav button:disabled { opacity: .35; cursor: default; }
+    .m.lg { grid-template-columns: 96px minmax(0,1fr) 30px; }
+
+    /* 订阅 */
+    .feeds { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px; }
+    .feed { padding: 16px; display: flex; flex-direction: column; gap: 8px; }
+    .feed b { font-size: 15px; }
+    .feed code { font-size: 11.5px; color: var(--text-2); background: var(--hover); border-radius: 7px; padding: 6px 8px; word-break: break-all; }
+    .feed-btns { display: flex; gap: 8px; flex-wrap: wrap; }
+    .btn { padding: 7px 14px; border-radius: 10px; border: 1px solid var(--line-2); font-size: 13px; font-weight: 600; white-space: nowrap; }
+    .btn:hover { background: var(--hover); }
+    .btn.primary { background: var(--accent); color: #04130a; border-color: var(--accent); }
+    .howto { padding: 16px 18px; margin-top: 14px; font-size: 13px; color: var(--text-2); line-height: 1.8; }
+    .howto b { color: var(--text-1); }
+
+    /* 侧栏 */
+    .kv { display: flex; justify-content: space-between; gap: 10px; font-size: 13px; padding: 6px 0; border-bottom: 1px dashed var(--line); }
+    .kv:last-child { border-bottom: 0; }
+    .kv span:first-child { color: var(--text-2); }
+    .kv b { font-weight: 700; }
+    .favs { display: flex; flex-wrap: wrap; gap: 6px; }
+    .fav-chip { font-size: 12px; padding: 3px 8px; border-radius: 999px; background: var(--hover); border: 1px solid var(--line); display: inline-flex; gap: 6px; align-items: center; }
+    .fav-chip button { color: var(--text-3); font-size: 12px; }
+    .fav-chip button:hover { color: var(--live); }
+    .src { display: flex; align-items: center; gap: 8px; font-size: 12.5px; padding: 3px 0; }
+    .dot { width: 7px; height: 7px; border-radius: 50%; background: #22c55e; flex-shrink: 0; }
+    .dot.bad { background: var(--live); }
+    .toast { position: fixed; left: 50%; bottom: 28px; transform: translateX(-50%) translateY(20px); opacity: 0; background: var(--text-1); color: var(--bg); padding: 8px 16px; border-radius: 10px; font-size: 13px; font-weight: 600; transition: .2s; pointer-events: none; z-index: 50; }
+    .toast.show { opacity: 1; transform: translateX(-50%); }
+
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: minmax(0,1fr); }
+      .aside { position: static; }
+    }
+    @media (max-width: 640px) {
+      .topbar-inner { padding: 10px 16px; gap: 10px; }
+      .layout { padding: 16px 16px 48px; }
+      .logo small, .updated { display: none; }
+      .m { grid-template-columns: 44px minmax(0,1fr) 28px; gap: 4px 10px; padding: 10px 12px; }
+      .m-time { grid-row: 1 / 3; }
+      .m-lg { grid-column: 2; flex-direction: row; gap: 6px; }
+      .m-vs, .m-solo { grid-column: 2; }
+      .m-tv { grid-column: 2; text-align: left; max-width: none; }
+      .ics-btn { grid-column: 3; grid-row: 1 / 3; }
+      .m.lg { grid-template-columns: 70px minmax(0,1fr) 28px; }
+      .m.lg .m-vs { grid-column: 2; }
+    }
+  </style>
+</head>
+<body>
+  <header class="topbar">
+    <div class="topbar-inner">
+      <div class="logo"><div class="logo-mark">🏟️</div>赛程<small>Match Day</small></div>
+      <div class="seg" id="viewSeg">
+        <button data-v="feed" class="active">赛程</button>
+        <button data-v="league">联赛</button>
+        <button data-v="esports">电竞</button>
+        <button data-v="sub">订阅提醒</button>
+      </div>
+      <div class="spacer"></div>
+      <span class="updated" id="updated">加载中…</span>
+      <button class="icon-btn" id="reloadBtn" title="重新读取数据"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36"/><path d="M21 3v6h-6"/></svg></button>
+      <a class="icon-btn" href="https://github.com/climb0516/match-day/actions/workflows/scrape.yml" target="_blank" rel="noopener" title="到 GitHub Actions 手动触发抓取">⚡</a>
+      <button class="icon-btn" id="themeBtn" title="深浅色">☾</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <main>
+      <section class="view active" id="view-feed">
+        <div class="filters" id="feedFilters"></div>
+        <div id="feedList"></div>
+      </section>
+      <section class="view" id="view-league">
+        <div class="filters" id="leagueChips"></div>
+        <div id="leagueBody"></div>
+      </section>
+      <section class="view" id="view-esports">
+        <div class="filters" id="esFilters"></div>
+        <div id="esList"></div>
+      </section>
+      <section class="view" id="view-sub">
+        <div class="feeds" id="feeds"></div>
+        <div class="panel howto">
+          <b>怎么订阅</b><br>
+          <b>iPhone</b>：点「订阅」会直接打开系统日历；也可以复制链接，到 设置 → 日历 → 账户 → 添加账户 → 其他 → 添加已订阅的日历，粘贴链接。<br>
+          <b>安卓 / 电脑</b>：复制链接，在 Google 日历「其他日历 → 通过网址添加」，或 Outlook「添加日历 → 从 Internet 订阅」。<br>
+          订阅后比赛自动出现在日历里，<b>开赛前 30 分钟提醒</b>；赛程每 2 小时更新一次，日历 App 会定期同步（各家频率不同，通常几小时一次）。<br>
+          只想记某一场：在赛程里点那场右侧的 📅，下载单场日历文件。
+        </div>
+      </section>
+    </main>
+
+    <aside class="aside">
+      <div class="panel widget" id="todayBox"></div>
+      <div class="panel widget">
+        <h3>我的关注</h3>
+        <div id="favBox"></div>
+        <p class="muted" style="margin-top:10px">点比赛里的队名 / 选手名即可关注或取消，关注的比赛会高亮；只保存在本机浏览器。</p>
+      </div>
+      <div class="panel widget">
+        <h3>数据来源</h3>
+        <div id="sources"></div>
+        <p class="muted" style="margin-top:10px">足球 / 篮球 / 综合：<a href="https://www.zhibo8.com/" target="_blank" rel="noopener">直播吧</a>（ESPN 兜底）；电竞：<a href="https://liquipedia.net/" target="_blank" rel="noopener">Liquipedia</a>（CC BY-SA 3.0）。时间均为北京时间，「进行中」按开赛时间估算。</p>
+      </div>
+    </aside>
+  </div>
+  <div class="toast" id="toast"></div>
+
+<script>
+const $ = s => document.querySelector(s);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const store = {
+  get(k, d) { try { const v = localStorage.getItem('md.' + k); return v === null ? d : JSON.parse(v); } catch { return d; } },
+  set(k, v) { try { localStorage.setItem('md.' + k, JSON.stringify(v)); } catch {} },
+};
+const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
+const SPORTS = { football: ['⚽ 足球', 'var(--football)'], basketball: ['🏀 篮球', 'var(--basketball)'], esports: ['🎮 电竞', 'var(--esports)'], other: ['🏅 综合', 'var(--other)'] };
+const GAMES = ['英雄联盟', '王者荣耀', '无畏契约', 'CS2', 'DOTA2'];
+const SITE = 'https://climb0516.github.io/match-day/';
+
+let DATA = null;
+const VIEWS = ['feed', 'league', 'esports', 'sub'];
+const state = {
+  view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get('view', 'feed'),   // #esports 等可直达
+  cat: store.get('cat', 'all'),          // all / fav / china / football / basketball / esports / other
+  hideDone: store.get('hideDone', false),
+  esMajor: store.get('esMajor', true),
+  game: store.get('game', 'all'),
+  league: store.get('league', '英超'),
+  round: {},                             // 联赛 -> 当前分组下标
+  days: 4,                               // 时间线显示几天（含昨天）
+  fav: new Set(store.get('fav', [])),
+};
+
+// ── 时间：全部按北京时间显示 ──
+const BJ = 8 * 3600e3;
+const bjDate = ts => new Date(ts * 1000 + BJ);                       // 用 UTC 字段读北京时间
+const dayKey = ts => bjDate(ts).toISOString().slice(0, 10);
+const hm = ts => bjDate(ts).toISOString().slice(11, 16);
+const md = ts => { const d = bjDate(ts); return `${d.getUTCMonth() + 1}/${d.getUTCDate()}`; };
+const nowTs = () => Date.now() / 1000;
+const todayKey = () => dayKey(nowTs());
+function dayLabel(key) {
+  const diff = Math.round((Date.parse(key) - Date.parse(todayKey())) / 864e5);
+  const d = new Date(key + 'T00:00:00Z');
+  const w = '周' + WEEK[d.getUTCDay()];
+  return { name: { '-1': '昨天', 0: '今天', 1: '明天', 2: '后天' }[diff] || w, sub: `${d.getUTCMonth() + 1}/${d.getUTCDate()} ${diff >= -1 && diff <= 2 ? w : ''}`, today: diff === 0 };
+}
+
+// 状态在前端按当前时间重算（数据最多晚 2 小时）
+function liveStatus(e) {
+  if (e.score) return 'post';
+  const dur = { football: 2, basketball: 2.5 }[e.sport] ?? ((e.bo || 1) * 0.8 + 0.3);
+  const n = nowTs();
+  if (n < e.ts) return 'pre';
+  return n < e.ts + dur * 3600 ? 'live' : 'post';
+}
+const isFav = e => state.fav.has(e.home) || state.fav.has(e.away);
+
+// ── 一行比赛 ──
+function teamBtn(name) {
+  if (!name) return '';
+  const tbd = name === 'TBD' || name === '待定';
+  return `<button class="team ${tbd ? 'tbd' : ''} ${state.fav.has(name) ? 'star' : ''}" ${tbd ? '' : `data-team="${esc(name)}"`} title="${tbd ? '对阵未定' : '点击关注 / 取消关注'}">${esc(name)}</button>`;
+}
+function row(e, { showDate = false, league = true } = {}) {
+  const st = liveStatus(e);
+  const [, color] = SPORTS[e.sport];
+  const lg = e.sport === 'esports' ? e.game : e.league;
+  const sub = e.sport === 'esports' ? e.league.replace(/ - .*/, '') + (e.stage ? ' · ' + e.stage : '') : (e.stage && e.stage !== e.league ? e.stage : '');
+  const score = e.score ? `<span class="score num">${esc(e.score.replace(':', '-'))}</span>` : `<span class="score vs">${st === 'post' ? (e.sport === 'esports' || e.sport === 'other' ? '已结束' : '待更新') : 'VS'}</span>`;
+  const vs = e.home || e.away
+    ? `<div class="m-vs"><span class="h">${teamBtn(e.home)}</span>${score}<span>${teamBtn(e.away)}</span></div>`
+    : `<div class="m-solo">${esc(e.stage || e.league)}</div>`;
+  return `<div class="m ${league ? '' : 'lg'} ${isFav(e) ? 'fav' : ''} ${st === 'post' ? 'done' : ''}">
+    <div class="m-time num">${showDate ? `${md(e.ts)}<small>${hm(e.ts)}</small>` : hm(e.ts)}${st === 'live' ? '<small><span class="live-tag">进行中</span></small>' : ''}</div>
+    ${league ? `<div class="m-lg" style="--c:${color}"><b>${esc(lg)}${e.china ? '<span class="cn">中</span>' : ''}</b><span title="${esc(e.league)}">${esc(sub)}</span></div>` : ''}
+    ${vs}
+    ${league ? `<div class="m-tv" title="${esc((e.tv || []).join(' '))}">${esc((e.tv || []).join(' · '))}</div>` : ''}
+    ${st !== 'post' ? `<button class="ics-btn" data-ics="${esc(e.id)}" title="加到日历（开赛前 30 分钟提醒）">📅</button>` : '<span></span>'}
+  </div>`;
+}
+
+function timeline(list, el, emptyText) {
+  const start = Date.parse(todayKey()) - 864e5;
+  const end = start + state.days * 864e5;
+  const inRange = list.filter(e => { const k = Date.parse(dayKey(e.ts)); return k >= start && k < end; });
+  const byDay = new Map();
+  for (const e of inRange) { const k = dayKey(e.ts); if (!byDay.has(k)) byDay.set(k, []); byDay.get(k).push(e); }
+  let html = '';
+  for (const [k, es] of byDay) {
+    const l = dayLabel(k);
+    es.sort((a, b) => (isFav(b) - isFav(a)) || a.ts - b.ts);   // 当天关注的置顶
+    html += `<div class="day"><div class="day-head ${l.today ? 'today' : ''}">${l.name}<small>${l.sub} · ${es.length} 场</small></div><div class="panel list">${es.map(e => row(e)).join('')}</div></div>`;
+  }
+  const maxDay = Math.max(0, ...list.map(e => Date.parse(dayKey(e.ts))));
+  if (end <= maxDay) html += `<button class="more" id="moreBtn">再看 3 天</button>`;
+  el.innerHTML = html || `<div class="panel empty">${emptyText}</div>`;
+  $('#moreBtn') && ($('#moreBtn').onclick = () => { state.days += 3; render(); });
+}
+
+// ── 赛程 ──
+function feedList() {
+  return DATA.events.filter(e => {
+    if (state.hideDone && liveStatus(e) === 'post') return false;
+    if (e.sport === 'esports' && state.esMajor && !e.major && !e.china && !isFav(e)) return false;
+    switch (state.cat) {
+      case 'fav': return isFav(e);
+      case 'china': return e.china;
+      case 'all': return true;
+      default: return e.sport === state.cat;
+    }
+  });
+}
+function renderFeed() {
+  const cnt = k => DATA.events.filter(e => k === 'fav' ? isFav(e) : k === 'china' ? e.china : e.sport === k).length;
+  const cats = [['all', '全部'], ['fav', '⭐ 关注'], ['china', '🇨🇳 中国'], ...Object.entries(SPORTS).map(([k, [n]]) => [k, n])];
+  $('#feedFilters').innerHTML = cats.map(([k, n]) => `<button class="chip ${state.cat === k ? 'active' : ''}" data-cat="${k}">${n}${k !== 'all' ? `<small>${cnt(k)}</small>` : ''}</button>`).join('') +
+    `<span class="spacer"></span><label class="toggle"><input type="checkbox" id="hideDone" ${state.hideDone ? 'checked' : ''}>隐藏已结束</label>
+     <label class="toggle"><input type="checkbox" id="esMajor" ${state.esMajor ? 'checked' : ''}>电竞只看重点</label>`;
+  const empty = state.cat === 'fav' ? '还没有关注的队伍：点任意比赛里的队名就能关注' : '这几天没有比赛';
+  timeline(feedList(), $('#feedList'), empty);
+}
+
+// ── 联赛 ──
+function renderLeague() {
+  const names = Object.keys(DATA.leagues);
+  if (!names.includes(state.league)) state.league = names[0];
+  $('#leagueChips').innerHTML = names.map(n => `<button class="chip ${n === state.league ? 'active' : ''}" data-league="${esc(n)}">${esc(n)}</button>`).join('');
+  const L = DATA.leagues[state.league];
+  if (!L) { $('#leagueBody').innerHTML = '<div class="panel empty">暂无数据</div>'; return; }
+  const gs = L.groups;
+  // 默认定位到「今天之后第一场」所在分组
+  if (state.round[state.league] === undefined) {
+    const n = nowTs() - 3 * 3600;
+    const i = gs.findIndex(g => g.matches.some(m => m.ts >= n));
+    state.round[state.league] = i < 0 ? gs.length - 1 : i;
+  }
+  const i = state.round[state.league], g = gs[i];
+  const evs = g.matches.map(m => ({ ...m, sport: L.sport, league: state.league, stage: m.stage || g.title, tv: [], china: false })).sort((a, b) => a.ts - b.ts);
+  $('#leagueBody').innerHTML = `<div class="round-nav"><button id="prevRound" ${i ? '' : 'disabled'}>‹ 上一${/轮/.test(g.title) ? '轮' : '组'}</button><b>${esc(g.title)}</b><button id="nextRound" ${i < gs.length - 1 ? '' : 'disabled'}>下一${/轮/.test(g.title) ? '轮' : '组'} ›</button></div>
+    <div class="panel list">${evs.map(e => row(e, { showDate: true, league: false })).join('')}</div>
+    <p class="muted" style="margin-top:10px">来源：${esc(L.src)} · 共 ${gs.length} 组、${gs.reduce((s, x) => s + x.matches.length, 0)} 场</p>`;
+  $('#prevRound').onclick = () => { state.round[state.league]--; renderLeague(); };
+  $('#nextRound').onclick = () => { state.round[state.league]++; renderLeague(); };
+}
+
+// ── 电竞 ──
+function renderEsports() {
+  const es = DATA.events.filter(e => e.sport === 'esports');
+  const cnt = g => es.filter(e => e.game === g && (!state.esMajor || e.major || e.china)).length;
+  $('#esFilters').innerHTML = [['all', '全部'], ...GAMES.map(g => [g, g])].map(([k, n]) => `<button class="chip ${state.game === k ? 'active' : ''}" data-game="${esc(k)}">${esc(n)}${k !== 'all' ? `<small>${cnt(k)}</small>` : ''}</button>`).join('') +
+    `<span class="spacer"></span><label class="toggle"><input type="checkbox" id="esMajor2" ${state.esMajor ? 'checked' : ''}>只看重点赛事 + 中国战队</label>`;
+  const list = es.filter(e => (state.game === 'all' || e.game === state.game) && (!state.esMajor || e.major || e.china || isFav(e)) && !(state.hideDone && liveStatus(e) === 'post'));
+  timeline(list, $('#esList'), '这几天没有符合条件的比赛，可以取消「只看重点」');
+}
+
+// ── 订阅 ──
+function renderSub() {
+  const desc = { 'china.ics': '中国国家队、中国战队（LPL / KPL / 中国区 VCT 等）', 'football.ics': '中超、五大联赛、欧冠、亚洲杯等', 'basketball.ics': 'NBA、CBA', 'esports.ics': '世界赛、MSI、LPL、LCK、KPL、VCT、Major、TI 等重点赛事' };
+  $('#feeds').innerHTML = Object.entries(DATA.feeds || {}).map(([fn, f]) => {
+    const url = SITE + fn;
+    return `<div class="panel feed"><b>${esc(f.title.replace('Match Day · ', ''))}</b><span class="muted">${desc[fn] || ''} · 未来 14 天 ${f.count} 场</span>
+      <code>${esc(url)}</code>
+      <div class="feed-btns"><a class="btn primary" href="${esc(url.replace(/^https:/, 'webcal:'))}">订阅</a><button class="btn" data-copy="${esc(url)}">复制链接</button></div></div>`;
+  }).join('');
+}
+
+// ── 侧栏 ──
+function renderAside() {
+  const t = todayKey(), today = DATA.events.filter(e => dayKey(e.ts) === t);
+  const live = DATA.events.filter(e => liveStatus(e) === 'live');
+  const next = DATA.events.filter(e => e.ts > nowTs() && (e.china || isFav(e))).sort((a, b) => a.ts - b.ts)[0];
+  $('#todayBox').innerHTML = `<h3>今天 · ${md(nowTs())} 周${WEEK[bjDate(nowTs()).getUTCDay()]}</h3>
+    ${Object.entries(SPORTS).map(([k, [n]]) => `<div class="kv"><span>${n}</span><b class="num">${today.filter(e => e.sport === k).length} 场</b></div>`).join('')}
+    <div class="kv"><span>正在进行</span><b class="num" style="color:${live.length ? 'var(--live)' : 'inherit'}">${live.length} 场</b></div>
+    ${next ? `<div class="kv"><span>下一场${isFav(next) ? '关注' : '中国'}</span><b style="text-align:right">${md(next.ts)} ${hm(next.ts)}<br><span class="muted">${esc(next.home && next.away ? `${next.home} vs ${next.away}` : next.stage || next.league)}</span></b></div>` : ''}`;
+  $('#favBox').innerHTML = state.fav.size ? `<div class="favs">${[...state.fav].map(n => `<span class="fav-chip">★ ${esc(n)}<button data-unfav="${esc(n)}" title="取消关注">✕</button></span>`).join('')}</div>` : '<div class="muted">还没有关注</div>';
+  $('#sources').innerHTML = (DATA.sources || []).map(s => `<div class="src"><span class="dot ${s.ok ? '' : 'bad'}"></span><span style="flex:1">${esc(s.name)}</span><span class="muted num">${s.ok ? s.count : '失败'}</span></div>`).join('');
+}
+
+function render() {
+  document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === state.view));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + state.view));
+  ({ feed: renderFeed, league: renderLeague, esports: renderEsports, sub: renderSub })[state.view]();
+  renderAside();
+}
+
+// ── 单场 ICS ──
+function downloadIcs(e) {
+  const f = d => d.toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
+  const start = new Date(e.ts * 1000);
+  const dur = { football: 2, basketball: 2.5 }[e.sport] ?? ((e.bo || 1) * 0.8 + 0.2);
+  const title = e.home && e.away ? `${e.home} vs ${e.away}` : (e.stage || e.league);
+  const x = s => String(s).replace(/[\\,;]/g, m => '\\' + m);
+  const ics = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//match-day//CN', 'BEGIN:VEVENT', `UID:${e.id}@match-day`, `DTSTAMP:${f(new Date())}`,
+    `DTSTART:${f(start)}`, `DTEND:${f(new Date(start.getTime() + dur * 3600e3))}`, `SUMMARY:${x((e.icon || '') + ' ' + title)}`,
+    `DESCRIPTION:${x([e.sport === 'esports' ? e.game + ' ' + e.league : e.league, e.stage, (e.tv || []).length ? '转播：' + e.tv.join(' ') : ''].filter(Boolean).join(' · '))}`,
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'TRIGGER:-PT30M', `DESCRIPTION:${x(title)} 30 分钟后开始`, 'END:VALARM', 'END:VEVENT', 'END:VCALENDAR'].join('\r\n');
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([ics], { type: 'text/calendar' }));
+  a.download = `${title.replace(/[\\/:*?"<>|]/g, '')}.ics`;
+  a.click();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+function toast(msg) {
+  const t = $('#toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(toast.t); toast.t = setTimeout(() => t.classList.remove('show'), 1600);
+}
+function toggleFav(name) {
+  state.fav.has(name) ? state.fav.delete(name) : state.fav.add(name);
+  store.set('fav', [...state.fav]);
+  toast(state.fav.has(name) ? `已关注 ${name}` : `已取消关注 ${name}`);
+  render();
+}
+
+// ── 事件 ──
+document.addEventListener('click', ev => {
+  const t = ev.target;
+  let b;
+  if ((b = t.closest('#viewSeg button'))) { state.view = b.dataset.v; state.days = 4; store.set('view', state.view); history.replaceState(null, '', '#' + state.view); render(); scrollTo(0, 0); }
+  else if ((b = t.closest('[data-cat]'))) { state.cat = b.dataset.cat; store.set('cat', state.cat); render(); }
+  else if ((b = t.closest('[data-game]'))) { state.game = b.dataset.game; store.set('game', state.game); render(); }
+  else if ((b = t.closest('[data-league]'))) { state.league = b.dataset.league; store.set('league', state.league); render(); }
+  else if ((b = t.closest('[data-team]'))) toggleFav(b.dataset.team);
+  else if ((b = t.closest('[data-unfav]'))) toggleFav(b.dataset.unfav);
+  else if ((b = t.closest('[data-ics]'))) { const e = DATA.events.find(x => x.id === b.dataset.ics); if (e) downloadIcs(e); }
+  else if ((b = t.closest('[data-copy]'))) navigator.clipboard?.writeText(b.dataset.copy).then(() => toast('链接已复制'), () => toast('复制失败'));
+});
+document.addEventListener('change', ev => {
+  const id = ev.target.id;
+  if (id === 'hideDone') { state.hideDone = ev.target.checked; store.set('hideDone', state.hideDone); render(); }
+  if (id === 'esMajor' || id === 'esMajor2') { state.esMajor = ev.target.checked; store.set('esMajor', state.esMajor); render(); }
+});
+
+function applyTheme(t) {
+  document.documentElement.dataset.theme = t;
+  $('#themeBtn').textContent = t === 'dark' ? '☾' : '☀';
+}
+applyTheme(store.get('theme', matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark'));
+$('#themeBtn').onclick = () => { const t = document.documentElement.dataset.theme === 'dark' ? 'light' : 'dark'; store.set('theme', t); applyTheme(t); };
+
+async function load() {
+  const btn = $('#reloadBtn'); btn.classList.add('spin');
+  try {
+    const r = await fetch('data.json?t=' + Date.now(), { cache: 'no-store' });
+    DATA = await r.json();
+    const u = new Date(DATA.updated);
+    $('#updated').textContent = `更新于 ${u.getMonth() + 1}/${u.getDate()} ${String(u.getHours()).padStart(2, '0')}:${String(u.getMinutes()).padStart(2, '0')}`;
+    render();
+  } catch (err) {
+    $('#updated').textContent = '数据读取失败';
+    console.error(err);
+  } finally { btn.classList.remove('spin'); }
+}
+$('#reloadBtn').onclick = load;
+setInterval(() => DATA && render(), 60e3);      // 每分钟刷新「进行中」状态
+load();
+</script>
+</body>
+</html>
