@@ -120,9 +120,19 @@
     .m-lg span { font-size: 11.5px; color: var(--text-3); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
     .m-vs { min-width: 0; display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 10px; align-items: center; }
     .m-vs .h { text-align: right; }
-    .team { font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; border-radius: 6px; padding: 1px 4px; }
+    .team { display: inline-flex; align-items: center; gap: 7px; max-width: 100%; font-weight: 600; white-space: nowrap; border-radius: 6px; padding: 1px 4px; vertical-align: middle; }
+    .team > span { min-width: 0; overflow: hidden; text-overflow: ellipsis; }
+    .h .team { flex-direction: row-reverse; }
     .team:hover { background: var(--hover); }
-    .team.star::after { content: " ★"; color: var(--star); }
+    .team.star > span::after { content: " ★"; color: var(--star); }
+    /* 队徽：本地缓存的小图；有深色版的按主题切换，缺图时留同尺寸占位保持对齐 */
+    .tl { width: 22px; height: 22px; object-fit: contain; flex-shrink: 0; }
+    .tl-ph { display: inline-block; border-radius: 50%; background: var(--hover); box-shadow: inset 0 0 0 1px var(--line); }
+    .tl-d { display: none; }
+    :root[data-theme="dark"] .tl-l { display: none; }
+    :root[data-theme="dark"] .tl-d { display: inline-block; }
+    .lg-ic { width: 15px; height: 15px; object-fit: contain; margin-right: 5px; vertical-align: -3px; }
+    .m-lg b.has-ic::before { display: none; }
     .team.tbd { color: var(--text-3); font-weight: 500; }
     .score { font-weight: 800; font-size: 15px; min-width: 54px; text-align: center; }
     .score.vs { color: var(--text-3); font-weight: 600; font-size: 12px; }
@@ -185,6 +195,8 @@
       .ics-btn { grid-column: 3; grid-row: 1 / 3; }
       .m.lg { grid-template-columns: 70px minmax(0,1fr) 28px; }
       .m.lg .m-vs { grid-column: 2; }
+      .tl { width: 18px; height: 18px; }
+      .team { gap: 5px; }
     }
   </style>
 </head>
@@ -300,10 +312,17 @@ function liveStatus(e) {
 const isFav = e => state.fav.has(e.home) || state.fav.has(e.away);
 
 // ── 一行比赛 ──
-function teamBtn(name) {
+// 图片：logos/ 下的相对路径；有深色版时输出两张，CSS 按主题显示其一；加载失败直接移除
+function logoImg(src, dark, cls) {
+  if (!src) return '';
+  const img = (u, c) => `<img class="${cls} ${c}" src="${esc(u)}" alt="" loading="lazy" decoding="async" onerror="this.remove()">`;
+  return dark ? img(src, 'tl-l') + img(dark, 'tl-d') : img(src, '');
+}
+function teamBtn(name, logo, dark) {
   if (!name) return '';
   const tbd = name === 'TBD' || name === '待定';
-  return `<button class="team ${tbd ? 'tbd' : ''} ${state.fav.has(name) ? 'star' : ''}" ${tbd ? '' : `data-team="${esc(name)}"`} title="${tbd ? '对阵未定' : '点击关注 / 取消关注'}">${esc(name)}</button>`;
+  const pic = logo ? logoImg(logo, dark, 'tl') : '<span class="tl tl-ph"></span>';
+  return `<button class="team ${tbd ? 'tbd' : ''} ${state.fav.has(name) ? 'star' : ''}" ${tbd ? '' : `data-team="${esc(name)}"`} title="${tbd ? '对阵未定' : '点击关注 / 取消关注'}">${pic}<span>${esc(name)}</span></button>`;
 }
 function row(e, { showDate = false, league = true } = {}) {
   const st = liveStatus(e);
@@ -312,11 +331,11 @@ function row(e, { showDate = false, league = true } = {}) {
   const sub = e.sport === 'esports' ? e.league.replace(/ - .*/, '') + (e.stage ? ' · ' + e.stage : '') : (e.stage && e.stage !== e.league ? e.stage : '');
   const score = e.score ? `<span class="score num">${esc(e.score.replace(':', '-'))}</span>` : `<span class="score vs">${st === 'post' ? (e.sport === 'esports' || e.sport === 'other' ? '已结束' : '待更新') : 'VS'}</span>`;
   const vs = e.home || e.away
-    ? `<div class="m-vs"><span class="h">${teamBtn(e.home)}</span>${score}<span>${teamBtn(e.away)}</span></div>`
+    ? `<div class="m-vs"><span class="h">${teamBtn(e.home, e.homeLogo, e.homeLogoDark)}</span>${score}<span>${teamBtn(e.away, e.awayLogo, e.awayLogoDark)}</span></div>`
     : `<div class="m-solo">${esc(e.stage || e.league)}</div>`;
   return `<div class="m ${league ? '' : 'lg'} ${isFav(e) ? 'fav' : ''} ${st === 'post' ? 'done' : ''}">
     <div class="m-time num">${showDate ? `${md(e.ts)}<small>${hm(e.ts)}</small>` : hm(e.ts)}${st === 'live' ? '<small><span class="live-tag">进行中</span></small>' : ''}</div>
-    ${league ? `<div class="m-lg" style="--c:${color}"><b>${esc(lg)}${e.china ? '<span class="cn">中</span>' : ''}</b><span title="${esc(e.league)}">${esc(sub)}</span></div>` : ''}
+    ${league ? `<div class="m-lg" style="--c:${color}"><b class="${e.leagueLogo ? 'has-ic' : ''}">${logoImg(e.leagueLogo, e.leagueLogoDark, 'lg-ic')}${esc(lg)}${e.china ? '<span class="cn">中</span>' : ''}</b><span title="${esc(e.league)}">${esc(sub)}</span></div>` : ''}
     ${vs}
     ${league ? `<div class="m-tv" title="${esc((e.tv || []).join(' '))}">${esc((e.tv || []).join(' · '))}</div>` : ''}
     ${st !== 'post' ? `<button class="ics-btn" data-ics="${esc(e.id)}" title="加到日历（开赛前 30 分钟提醒）">📅</button>` : '<span></span>'}
@@ -379,7 +398,8 @@ function renderLeague() {
     state.round[state.league] = i < 0 ? gs.length - 1 : i;
   }
   const i = state.round[state.league], g = gs[i];
-  const evs = g.matches.map(m => ({ ...m, sport: L.sport, league: state.league, stage: m.stage || g.title, tv: [], china: false })).sort((a, b) => a.ts - b.ts);
+  const lo = L.logos || {};
+  const evs = g.matches.map(m => ({ ...m, homeLogo: lo[m.home], awayLogo: lo[m.away], sport: L.sport, league: state.league, stage: m.stage || g.title, tv: [], china: false })).sort((a, b) => a.ts - b.ts);
   $('#leagueBody').innerHTML = `<div class="round-nav"><button id="prevRound" ${i ? '' : 'disabled'}>‹ 上一${/轮/.test(g.title) ? '轮' : '组'}</button><b>${esc(g.title)}</b><button id="nextRound" ${i < gs.length - 1 ? '' : 'disabled'}>下一${/轮/.test(g.title) ? '轮' : '组'} ›</button></div>
     <div class="panel list">${evs.map(e => row(e, { showDate: true, league: false })).join('')}</div>
     <p class="muted" style="margin-top:10px">来源：${esc(L.src)} · 共 ${gs.length} 组、${gs.reduce((s, x) => s + x.matches.length, 0)} 场</p>`;

@@ -4,8 +4,10 @@
 输出：
 - data.json：未来 14 天 + 过去 3 天的统一时间线 events，各联赛整季赛程 leagues，来源状态 sources
 - china.ics / football.ics / basketball.ics / esports.ics：可订阅日历，开赛前 30 分钟提醒
+- logos/：队徽 / 赛事图标缓存（来源有防盗链，下载到仓库同源访问；按文件名去重，已有的不再下载）
 """
-import gzip, html, json, re, time, urllib.parse, urllib.request
+import gzip, hashlib, html, json, re, threading, time, urllib.parse, urllib.request
+from concurrent.futures import ThreadPoolExecutor, wait
 from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
@@ -16,6 +18,8 @@ UA = ("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 "
       "(KHTML, like Gecko) Chrome/128.0 Safari/537.36")
 LIQ_UA = "MatchDay/1.0 (https://github.com/climb0516/match-day)"   # Liquipedia 要求自定义 UA
 PAST_DAYS, FUTURE_DAYS = 3, 14
+LOGO_DIR = ROOT / "logos"
+SITE = "https://climb0516.github.io/match-day/"
 
 # 联赛：名称、项目、直播吧 type、ESPN 兜底路径
 LEAGUES = [
@@ -65,6 +69,92 @@ def fetch(url, timeout=20, headers=None):
         return raw.decode("utf-8", "ignore")
 
 
+def fetch_bytes(url, timeout=10, headers=None):
+    req = urllib.request.Request(url, headers={"User-Agent": UA, **(headers or {})})
+    with urllib.request.urlopen(req, timeout=timeout) as r:
+        if not r.headers.get("Content-Type", "").startswith("image/"):
+            raise ValueError("not image")
+        return r.read()
+
+
+# ── 队徽缓存 ──────────────────────────────────────────────
+# 直播吧（duihui.duoduocdn.com）、Liquipedia 图片都校验 Referer，不能外链 → 下载到 logos/，页面同源引用。
+# 直播吧走阿里云 OSS 缩放成 64px 宽；Liquipedia 用页面自带的约 50px 高缩略图，单线程、每张间隔 1 秒。
+# 下载在后台线程里跑（与 Liquipedia 的 31 秒限流等待重叠），总时长有上限，没下完的下次运行再补。
+class Logos:
+    def __init__(self):
+        self.pools = {"zb": ThreadPoolExecutor(6), "lq": ThreadPoolExecutor(1)}
+        self.futs, self.lock, self.stop = {}, threading.Lock(), False
+        self.new = self.fail = 0
+
+    @staticmethod
+    def plan(url):
+        """远程 URL → (仓库相对路径, 实际下载地址, 线程池)；不认识的来源返回 None"""
+        u = urllib.parse.urlparse(url if "://" in url else "https:" + url if url.startswith("//") else
+                                  "https://liquipedia.net" + url)
+        safe = lambda x: re.sub(r"[^A-Za-z0-9._-]", "_", urllib.parse.unquote(x))[-80:]
+        if u.netloc.endswith("duoduocdn.com"):
+            name = safe(u.path.strip("/").replace("/", "_"))
+            return f"logos/zb/{name}", f"https://{u.netloc}{u.path}?x-oss-process=image/resize,w_64", "zb"
+        if u.netloc.endswith("espncdn.com"):
+            path = re.sub(r"^/combiner/i$", "", u.path) or urllib.parse.parse_qs(u.query).get("img", [""])[0]
+            name = safe(path.strip("/").replace("/i/", "").replace("/", "_"))
+            return f"logos/espn/{name}", f"https://a.espncdn.com/combiner/i?img={path}&h=64&w=64", "zb"
+        if u.netloc == "liquipedia.net" and "/commons/images/" in u.path:
+            base = re.sub(r"^\d+px-", "", u.path.rsplit("/", 1)[-1])
+            name = safe(base) if re.fullmatch(r"[A-Za-z0-9._-]+", base) else \
+                hashlib.md5(base.encode()).hexdigest()[:12] + Path(base).suffix
+            return f"logos/lq/{name}", f"https://liquipedia.net{u.path}", "lq"
+        return None
+
+    def want(self, url):
+        """登记一个远程图片，返回将来的相对路径（下载失败的在 finish 后由 exists 过滤掉）"""
+        if not url:
+            return None
+        try:
+            p = self.plan(url)
+        except Exception:
+            return None
+        if not p:
+            return None
+        rel, src, pool = p
+        with self.lock:
+            if rel not in self.futs and not (ROOT / rel).exists():
+                self.futs[rel] = self.pools[pool].submit(self._get, rel, src, pool)
+        return rel
+
+    def _get(self, rel, src, pool):
+        if self.stop:
+            return
+        try:
+            data = fetch_bytes(src, headers={"User-Agent": LIQ_UA} if pool == "lq" else None)
+            if len(data) < 200:
+                raise ValueError("too small")
+            f = ROOT / rel
+            f.parent.mkdir(parents=True, exist_ok=True)
+            tmp = f.with_suffix(f.suffix + ".part")
+            tmp.write_bytes(data)
+            tmp.replace(f)
+            self.new += 1
+        except Exception:
+            self.fail += 1
+        if pool == "lq":
+            time.sleep(0.3)
+
+    def finish(self, budget):
+        """最多再等 budget 秒，剩下的放弃（下次运行再补）"""
+        wait(list(self.futs.values()), timeout=budget)
+        self.stop = True
+        for p in self.pools.values():
+            p.shutdown(wait=True, cancel_futures=True)
+        pending = sum(not (ROOT / r).exists() for r in self.futs) - self.fail
+        return {"new": self.new, "fail": self.fail, "skipped": max(pending, 0)}
+
+    @staticmethod
+    def ok(rel):
+        return rel if rel and (ROOT / rel).exists() else None
+
+
 def text(s):
     return html.unescape(re.sub(r"<[^>]+>", " ", s)).split()
 
@@ -88,7 +178,7 @@ def qmb_league(name, typ):
             fin = bool(m.get("is_finish"))
             ms.append({"id": "zb" + str(m["saishi_id"]), "ts": ts, "home": m.get("主队名称") or m.get("主队"),
                        "away": m.get("客队名称") or m.get("客队"), "score": score if fin and re.search(r"\d", score) else "",
-                       "fin": fin, "stage": m.get("赛事", "")})
+                       "fin": fin, "stage": m.get("赛事", ""), "_hl": m.get("主队图标"), "_al": m.get("客队图标")})
         if ms:
             groups.append({"title": g.get("title", ""), "matches": ms})
     if not groups:
@@ -110,7 +200,7 @@ def espn_league(path, today):
             ms.append({"id": "espn" + ev["id"], "ts": ts, "home": teams["home"]["team"]["displayName"],
                        "away": teams["away"]["team"]["displayName"],
                        "score": f'{teams["home"].get("score", "")}-{teams["away"].get("score", "")}' if fin else "",
-                       "fin": fin, "stage": ""})
+                       "fin": fin, "stage": "", "_hl": teams["home"]["team"].get("logo"), "_al": teams["away"]["team"].get("logo")})
     if not ms:
         raise ValueError("empty")
     return [{"title": "近期（ESPN）", "matches": sorted(ms, key=lambda m: m["ts"])}]
@@ -125,16 +215,18 @@ def zhibo8_home():
         ts = int(datetime.strptime(when, "%Y-%m-%d %H:%M").replace(tzinfo=CST).timestamp())
         league = " ".join(text((re.search(r'class="_league">(.*?)</span>', body) or [None, ""])[1]))
         tm = re.search(r'class="_teams">(.*?)</span></b>', body, re.S)
-        home = away = ""
+        home = away = hl = al = ""
         if tm:
             sides = re.split(r"<span>\s*-\s*</span>", tm.group(1))
             if len(sides) == 2:
                 home, away = " ".join(text(sides[0])), " ".join(text(sides[1]))
+                img = lambda x: (re.search(r'<img[^>]+src="([^"]+)"', x) or [None, ""])[1]
+                hl, al = img(sides[0]), img(sides[1])
         tv = []
         for a in re.findall(r"<a [^>]*>(.*?)</a>", body):
             tv += [x for x in text(a) if x not in NOT_TV]
         out.append({"id": "zb" + sid, "ts": ts, "type": typ, "labels": label.split(","), "league": league,
-                    "home": home, "away": away, "tv": list(dict.fromkeys(tv))[:4]})
+                    "home": home, "away": away, "hl": hl, "al": al, "tv": list(dict.fromkeys(tv))[:4]})
     if not out:
         raise ValueError("empty")
     return out
@@ -155,8 +247,14 @@ def liquipedia(wiki):
         scores = re.findall(r'scoreholder-score[^"]*">([^<]*)', blk)
         bo = re.search(r"\(Bo(\d+)\)", blk)
         tour = re.search(r'match-info-tournament-name"><a [^>]*><span>([^<]+)', blk)
-        out.append({"ts": int(ts.group(1)), "home": html.unescape(teams[0][1] or "TBD"), "away": html.unescape(teams[1][1] or "TBD"),
-                    "homeFull": html.unescape(teams[0][0]), "awayFull": html.unescape(teams[1][0]),
+        head, _, tail = blk.partition('<div class="match-info-tournament">')
+        opp = [lq_imgs(x) for x in head.split('<div class="match-info-header-opponent')[1:3]]
+        opp = (opp + [(None, None)] * 2)[:2]
+        tl = lq_imgs(tail.split('match-info-tournament-name')[0])
+        out.append({"hl": opp[0][0], "hld": opp[0][1], "al": opp[1][0], "ald": opp[1][1], "tl": tl[0], "tld": tl[1],
+                    "ts": int(ts.group(1)), "home": html.unescape(teams[0][1] or "TBD"), "away": html.unescape(teams[1][1] or "TBD"),
+                    "homeFull": html.unescape(teams[0][0]).replace(" (page does not exist)", ""),
+                    "awayFull": html.unescape(teams[1][0]).replace(" (page does not exist)", ""),
                     "score": ":".join(scores[:2]) if len(scores) >= 2 and all(s.strip() for s in scores[:2]) else "",
                     "bo": int(bo.group(1)) if bo else None, "tour": html.unescape(tour.group(1)) if tour else ""})
     if not out:
@@ -168,6 +266,17 @@ def liquipedia(wiki):
         if k not in uniq or m["score"]:
             uniq[k] = m
     return sorted(uniq.values(), key=lambda m: m["ts"])
+
+
+def lq_imgs(chunk):
+    """Liquipedia 图标：(浅色/通用, 深色)；只有通用版时深色为 None"""
+    light = dark = None
+    for cls, src in re.findall(r'<span class="(?:team-template-image-icon|league-icon-small-image)([^"]*)">.*?<img [^>]*src="([^"]+)"', chunk, re.S):
+        if "darkmode" in cls:
+            dark = dark or src
+        else:
+            light = light or src
+    return light, dark
 
 
 # ── ICS ────────────────────────────────────────────────
@@ -218,6 +327,7 @@ def main():
         return "live" if ts <= nowts < ts + hours * 3600 else ("pre" if ts > nowts else "post")
 
     events, leagues = [], {}
+    logos = Logos()
     nmatches = lambda gs: sum(len(g["matches"]) for g in gs)
 
     # 1. 联赛：直播吧优先，失败用 ESPN，再失败沿用旧数据
@@ -230,13 +340,22 @@ def main():
             if not prev:
                 continue
             groups, src = prev["groups"], prev["src"] + "（旧数据）"
-        leagues[name] = {"sport": sport, "src": src, "groups": groups}
+        # 队名 → 队徽（本联赛范围）；旧数据没有图标 URL，沿用上次的映射
+        team_logo = dict((old.get("leagues", {}).get(name) or {}).get("logos") or {})
+        for g in groups:
+            for m in g["matches"]:
+                for side, k in (("home", "_hl"), ("away", "_al")):
+                    rel = logos.want(m.pop(k, None))
+                    if rel and m[side]:
+                        team_logo[m[side]] = rel
+        leagues[name] = {"sport": sport, "src": src, "groups": groups, "logos": team_logo}
         hours = 2 if sport == "football" else 2.5
         for g in groups:
             for m in g["matches"]:
                 if lo <= m["ts"] <= hi:
                     events.append({"id": m["id"], "ts": m["ts"], "t": iso(m["ts"]), "sport": sport, "league": name,
                                    "stage": m.get("stage") or ("" if re.match(r"\d{4}-\d{2}-\d{2}", g["title"]) else g["title"]), "home": m["home"], "away": m["away"],
+                                   "homeLogo": team_logo.get(m["home"]), "awayLogo": team_logo.get(m["away"]),
                                    "score": m["score"], "status": status(m["ts"], m["fin"], hours), "tv": [],
                                    "china": bool(CN_TEXT.search(m["home"] + m["away"]))})
 
@@ -252,20 +371,36 @@ def main():
                         {h["home"], h["away"]} == {e["home"], e["away"]}), None)
             if hit:
                 hit["tv"] = h["tv"]
+                side = {h["home"]: h["hl"], h["away"]: h["al"]}
+                hit["homeLogo"] = hit.get("homeLogo") or logos.want(side.get(hit["home"]))
+                hit["awayLogo"] = hit.get("awayLogo") or logos.want(side.get(hit["away"]))
                 continue
             sport = {"football": "football", "basketball": "basketball"}.get(h["type"], "other")
             if "电竞" in h["labels"]:
                 continue                                    # 电竞以 Liquipedia 为准
             if h["home"] == h["away"] or {h["home"], h["away"]} & SPORT_WORDS:
-                h["home"] = h["away"] = ""
+                h["home"] = h["away"] = h["hl"] = h["al"] = ""
             events.append({"id": h["id"], "ts": h["ts"], "t": iso(h["ts"]), "sport": sport,
                            "league": h["labels"][0] if sport == "other" and h["labels"] else h["league"],
-                           "stage": h["league"], "home": h["home"], "away": h["away"], "score": "",
+                           "stage": h["league"], "home": h["home"], "away": h["away"],
+                           "homeLogo": logos.want(h["hl"]), "awayLogo": logos.want(h["al"]), "score": "",
                            "status": status(h["ts"], False, 2.5), "tv": h["tv"],
                            "china": bool(CN_TEXT.search(" ".join(h["labels"]) + h["home"] + h["away"]))})
 
     # 3. 电竞：Liquipedia 限流（parse 请求间隔 ≥ 30 秒）
     prev_es = [e for e in old.get("events", []) if e["sport"] == "esports"]
+    LQ_KEYS = {"hl": "homeLogo", "al": "awayLogo", "hld": "homeLogoDark", "ald": "awayLogoDark",
+               "tl": "leagueLogo", "tld": "leagueLogoDark"}
+
+    def queue_es_logos(evs):
+        """电竞图标排队下载（后台线程，与下一次 31 秒限流等待重叠）：先未开始的比赛、先队徽后赛事图标 / 深色版"""
+        for keys in (("hl", "al"), ("hld", "ald", "tl", "tld")):
+            for e in sorted(evs, key=lambda e: (e["status"] == "post", e["ts"])):
+                for k in keys:
+                    e[LQ_KEYS[k]] = logos.want(e["_m"][k])
+        for e in evs:
+            e.pop("_m")
+
     for i, (wiki, cn, key, cn_teams) in enumerate(GAMES):
         if i:
             time.sleep(31)
@@ -273,6 +408,7 @@ def main():
         if ms is None:
             events += [e for e in prev_es if e.get("game") == cn and lo <= e["ts"] <= hi]
             continue
+        n0 = len(events)
         for m in ms:
             if not lo <= m["ts"] <= hi:
                 continue
@@ -281,9 +417,22 @@ def main():
             events.append({"id": f'lq-{wiki}-{m["ts"]}-{re.sub(r"[^A-Za-z0-9]", "", m["home"] + m["away"])}',
                            "ts": m["ts"], "t": iso(m["ts"]), "sport": "esports", "game": cn, "league": m["tour"],
                            "stage": f'Bo{m["bo"]}' if m["bo"] else "", "home": m["home"], "away": m["away"],
-                           "homeFull": m["homeFull"], "awayFull": m["awayFull"], "score": m["score"],
+                           "homeFull": m["homeFull"], "awayFull": m["awayFull"], "_m": m, "score": m["score"],
                            "status": status(m["ts"], bool(m["score"]), (m["bo"] or 1) * 0.8 + 0.3),
                            "bo": m["bo"], "tv": [], "major": bool(re.search(key, m["tour"])), "china": china})
+        queue_es_logos(events[n0:])
+
+    # 队徽：电竞阶段已经和限流等待重叠下载了大半，这里最多再等 30 秒，剩下的下次运行补
+    stat = logos.finish(30)
+    for e in events:
+        for k in ("homeLogo", "awayLogo", "homeLogoDark", "awayLogoDark", "leagueLogo", "leagueLogoDark"):
+            v = Logos.ok(e.get(k))
+            if v and not (k.endswith("Dark") and v == e.get(k[:-4])):
+                e[k] = v
+            else:
+                e.pop(k, None)
+    for L in leagues.values():
+        L["logos"] = {t: r for t, r in L["logos"].items() if Logos.ok(r)}
 
     events.sort(key=lambda e: (e["ts"], e["league"]))
     icon = {"football": "⚽", "basketball": "🏀", "esports": "🎮", "other": "🏅"}
@@ -302,6 +451,7 @@ def main():
 
     data = {
         "updated": stamp,               # 每次都变 = 心跳，保证每次运行都有提交
+        "logoBase": SITE,               # events[].homeLogo 等是相对路径，站外使用时拼上这个前缀
         "events": events,
         "leagues": leagues,
         "feeds": {fn: {"title": t, "count": sum(e["status"] != "post" for e in evs)} for fn, (t, evs) in feeds.items()},
@@ -312,6 +462,9 @@ def main():
     print("events", len(events), Counter(e["sport"] for e in events), "china", sum(e["china"] for e in events))
     print("leagues", {k: (v["src"], nmatches(v["groups"])) for k, v in leagues.items()})
     print("failed", [s["name"] for s in sources if not s["ok"]])
+    has = lambda e: bool(e.get("homeLogo") and e.get("awayLogo"))
+    print("logos", stat, {sp: f'{sum(has(e) for e in events if e["sport"] == sp and e["home"])}/{sum(1 for e in events if e["sport"] == sp and e["home"])}'
+                          for sp in ("football", "basketball", "esports", "other")})
 
 
 if __name__ == "__main__":

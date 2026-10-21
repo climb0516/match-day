@@ -31,6 +31,7 @@
 - **开赛提醒**
   - 单场：点 📅 下载 .ics，开赛前 30 分钟提醒
   - **订阅日历**（`#sub`）：`china.ics`、`football.ics`、`basketball.ics`、`esports.ics`，订阅一次自动同步未来 14 天的比赛
+- **队徽**：比赛双方显示队徽 / 战队标志，电竞另带赛事图标（深浅色各有一版的按主题切换）
 - 右侧挂件：今天各项目场次、正在进行、下一场中国 / 关注的比赛、来源状态
 - 右上角：↻ 重新读取数据，⚡ 跳转 GitHub Actions 手动触发抓取，☾ 深浅色；手机适配
 
@@ -56,6 +57,8 @@ iPhone 可以直接打开 `webcal://` 开头的同一地址订阅；Google 日�
 | [Liquipedia](https://liquipedia.net/) | 5 个电竞项目最近 50 场已结束 + 50 场即将开始 | CC BY-SA 3.0；按其 API 条款每次请求间隔 30 秒、带 gzip 和自定义 UA |
 | [ESPN](https://www.espn.com/) | 足球 / NBA 近期赛程比分（英文） | 直播吧某个联赛取不到时兜底 |
 
+**队徽**：直播吧接口和首页本身带队徽 URL（`duihui.duoduocdn.com`），Liquipedia 比赛页带战队 / 赛事图标，ESPN 兜底时用它的 `team.logo`。直播吧和 Liquipedia 的图片都校验 Referer（外站引用返回 403），所以统一下载到仓库 `logos/`（直播吧经阿里云 OSS 缩成 64px 宽，Liquipedia 用约 50px 高的缩略图，每张 2～7 KB），按文件名去重，已有的不再下载。下载在后台线程里进行，与 Liquipedia 的限流等待重叠；Liquipedia 图片单线程、每张间隔 1 秒，一次运行没下完的下次补上。
+
 **限制**：
 - 直播吧可能拦截海外服务器（GitHub Actions），被拦时足球、NBA 改用 ESPN 的英文数据，CBA 和综合项目沿用上一次的数据
 - 综合项目只有未来 2～3 天（直播吧首页的范围）；暂无积分榜
@@ -71,6 +74,7 @@ GitHub Actions（每 2 小时 / 手动 / 修改爬虫后 push）
   ↓ python scraper.py（只用标准库）
   ↓ 直播吧 10 个联赛 + 首页（频道、综合项目） + Liquipedia 5 个项目（间隔 31 秒） ；失败时 ESPN / 旧数据兜底
   ↓ 合并成统一时间线（过去 3 天 ~ 未来 14 天），标记中国 / 重点赛事
+  ↓ 队徽下载到 logos/（后台线程，与限流等待重叠，已有的跳过）
   ↓ 写入 data.json 和 4 个 .ics，commit（updated 每次都变 = 心跳，防止定时任务因 60 天不活跃被停用）
        ↓
 GitHub Pages（index.html 读取同目录 data.json，筛选、关注、状态估算都在前端完成）
@@ -84,13 +88,20 @@ GitHub Pages（index.html 读取同目录 data.json，筛选、关注、状态�
   "events": [                                   // 统一时间线，按开赛时间排序
     { "id": "zb2295806", "ts": 1792582500, "t": "2026-10-21T19:35+08:00", "sport": "basketball",   // football / basketball / esports / other
       "league": "CBA", "stage": "常规赛", "home": "浙江", "away": "山东", "score": "", "status": "pre",  // pre / live / post
-      "tv": ["CCTV5", "咪咕"], "china": false, "icon": "🏀" },
+      "tv": ["CCTV5", "咪咕"], "china": false, "icon": "🏀",
+      "homeLogo": "logos/zb/nba_lq_zhejiang_xxx.png", "awayLogo": "logos/zb/…png" },   // 队徽，可缺省
+
     { "id": "lq-valorant-…", "sport": "esports", "game": "无畏契约", "league": "VCT Threshold China - Week 1",
       "stage": "Bo3", "bo": 3, "home": "WOL", "away": "AT", "homeFull": "Wolves Esports", "awayFull": "…",
-      "major": true, "china": true, … }
+      "major": true, "china": true,
+      "homeLogo": "logos/lq/Wolves_Esports_allmode.png", "awayLogo": "logos/lq/A_Team_lightmode.png",
+      "awayLogoDark": "logos/lq/A_Team_darkmode.png",                 // 仅当深色版不同时才有
+      "leagueLogo": "logos/lq/VALORANT_Challengers_2023_icon_allmode.png", … }   // 电竞赛事图标（leagueLogoDark 同理）
   ],
+  "logoBase": "https://climb0516.github.io/match-day/",           // *Logo 都是相对路径，站外使用时拼上这个前缀
   "leagues": { "英超": { "sport": "football", "src": "直播吧",
-               "groups": [ { "title": "第8轮", "matches": [ { "id": "zb…", "ts": …, "home": "…", "away": "…", "score": "3-1", "fin": true, "stage": "" } ] } ] } },
+               "groups": [ { "title": "第8轮", "matches": [ { "id": "zb…", "ts": …, "home": "…", "away": "…", "score": "3-1", "fin": true, "stage": "" } ] } ],
+               "logos": { "阿森纳": "logos/zb/zuqiu_zq_asenna_038936.png" } } },       // 本联赛 队名 → 队徽
   "feeds": { "china.ics": { "title": "Match Day · 中国", "count": 27 } },     // 字段只增不减，pages-dashboard 会读
   "sources": [ { "name": "直播吧 英超", "ok": true, "count": 380, "updated": "…" } ]
 }
