@@ -187,7 +187,7 @@
       .topbar-inner { padding: 10px 16px; gap: 10px; }
       .layout { padding: 16px 16px 48px; }
       .logo small, .updated { display: none; }
-      .m { grid-template-columns: 44px minmax(0,1fr) 28px; gap: 4px 10px; padding: 10px 12px; }
+      .m { grid-template-columns: 40px minmax(0,1fr) auto; gap: 4px 8px; padding: 10px 12px; }
       .m-time { grid-row: 1 / 3; }
       .m-lg { grid-column: 2; flex-direction: row; gap: 6px; }
       .m-vs, .m-solo { grid-column: 2; }
@@ -196,7 +196,117 @@
       .m.lg { grid-template-columns: 70px minmax(0,1fr) 28px; }
       .m.lg .m-vs { grid-column: 2; }
       .tl { width: 18px; height: 18px; }
-      .team { gap: 5px; }
+      .team { gap: 5px; white-space: normal; line-height: 1.25; font-size: 13.5px; }        /* 队名最多两行，不再截成两个字 */
+      .team > span { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+      .m-vs { gap: 6px; }
+      .seg { order: 10; width: 100%; flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; }   /* 视图切换挪到第二行，可横滑 */
+    }
+
+    /* 每天按大类分块，超出的进当天列表页 */
+    .cat-head { display: flex; align-items: baseline; gap: 8px; padding: 8px 14px 6px; font-size: 12.5px; font-weight: 700; color: var(--text-2); background: var(--hover); border-bottom: 1px solid var(--line); }
+    .cat-head::before { content: ""; width: 7px; height: 7px; border-radius: 2px; background: var(--c); align-self: center; }
+    .cat-head small { color: var(--text-3); font-weight: 500; font-size: 11.5px; }
+    .m-more { display: block; padding: 9px 14px; font-size: 12.5px; font-weight: 600; color: var(--text-2); text-align: center; border-bottom: 1px solid var(--line); }
+    .m-more:hover { color: var(--text-1); background: var(--hover); }
+    .list > :last-child { border-bottom: 0; }
+    .m[data-kit-item]:hover { background: var(--hover); }
+    .m.fav[data-kit-item]:hover { background: color-mix(in srgb, var(--star) 11%, transparent); }
+    .day-head .kit-morelink { margin-left: auto; font-size: 12.5px; }
+    .day-nav { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 12px; }
+    /* 比赛详情：两队大队徽 + 比分 */
+    .mdv { display: grid; grid-template-columns: minmax(0,1fr) auto minmax(0,1fr); gap: 10px; align-items: center; padding: 16px 0 6px; text-align: center; }
+    .mdv-side { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 0; }
+    .mdv-logo { width: 64px; height: 64px; object-fit: contain; }
+    .mdv-ph { width: 64px; height: 64px; border-radius: 50%; background: var(--hover); box-shadow: inset 0 0 0 1px var(--line); display: grid; place-items: center; font-size: 24px; font-weight: 800; color: var(--text-3); }
+    .mdv .team { font-size: 14.5px; font-weight: 700; white-space: normal; justify-content: center; text-align: center; }
+    .mdv-full { font-size: 11.5px; color: var(--text-3); }
+    .mdv-score { font-size: 30px; font-weight: 800; white-space: nowrap; }
+    .mdv-score.vs { font-size: 16px; color: var(--text-3); font-weight: 700; }
+    .mdv-st { font-size: 12px; color: var(--text-3); margin-top: 2px; white-space: nowrap; }
+    .mdv-st.live { color: var(--live); font-weight: 700; }
+    .mdv-solo { font-size: 17px; font-weight: 700; padding: 10px 0 2px; }
+    @media (max-width: 640px) { .mdv-logo, .mdv-ph { width: 52px; height: 52px; } .mdv-score { font-size: 24px; } }
+    /* ── 详情抽屉 + 列表页（通用组件 kit：电脑右侧滑出，手机底部升起；地址 #/item/类型/id、#/list/key） ── */
+    :root { --kit-bg: var(--bg, #0b0a10); --kit-panel: var(--panel, var(--card, rgba(255,255,255,.04))); --kit-line: var(--line, var(--sep, rgba(255,255,255,.08)));
+      --kit-line2: var(--line-2, rgba(255,255,255,.14)); --kit-t1: var(--text-1, #f1eff7); --kit-t2: var(--text-2, #a39fb3); --kit-t3: var(--text-3, #6b677a);
+      --kit-accent: var(--accent, #a3e635); --kit-hover: var(--hover, rgba(255,255,255,.05)); }
+    .kit-mask { position: fixed; inset: 0; z-index: 90; background: rgba(0,0,0,.38); display: none; }
+    .kit-mask.open { display: block; }
+    .kit-sheet { position: absolute; top: 12px; right: 12px; bottom: 12px; width: clamp(440px, 42vw, 620px); max-width: calc(100vw - 24px);
+      display: flex; flex-direction: column; overflow: hidden; color: var(--kit-t1); border-radius: 18px;
+      background: linear-gradient(var(--kit-panel), var(--kit-panel)), var(--kit-bg); box-shadow: 0 0 0 1px var(--kit-line2), 0 24px 60px rgba(0,0,0,.45);
+      animation: kit-in .24s ease-out; }
+    @keyframes kit-in { from { transform: translateX(40px); opacity: 0; } }
+    .kit-x { position: absolute; top: 12px; right: 12px; z-index: 3; width: 32px; height: 32px; border-radius: 50%; border: 0; cursor: pointer;
+      background: rgba(0,0,0,.5); color: #fff; font-size: 15px; display: grid; place-items: center; }
+    .kit-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+    .kit-cover { aspect-ratio: 16/9; background: var(--kit-hover) center / cover no-repeat; position: relative; }
+    .kit-cover.tall { aspect-ratio: auto; height: 280px; background-size: contain; background-color: #000; }
+    .kit-cover.ph { display: grid; place-items: center; font-size: 56px; aspect-ratio: 16/6; }
+    .kit-head { padding: 18px 20px 4px; display: flex; gap: 14px; align-items: flex-start; }
+    .kit-head .kit-thumb { flex-shrink: 0; width: 64px; height: 64px; border-radius: 14px; background: var(--kit-hover) center / cover no-repeat;
+      display: grid; place-items: center; font-size: 28px; overflow: hidden; }
+    .kit-head .kit-t { flex: 1; min-width: 0; padding-right: 30px; }
+    .kit-cover + .kit-head .kit-t { padding-right: 0; }
+    .kit-head h2 { font-size: 19px; font-weight: 800; line-height: 1.35; letter-spacing: -0.01em; }
+    .kit-sub { color: var(--kit-t2); font-size: 13px; margin-top: 4px; }
+    .kit-tags { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+    .kit-tags span { font-size: 11.5px; font-weight: 600; padding: 2px 8px; border-radius: 6px; background: var(--kit-hover); color: var(--kit-t2); }
+    .kit-big { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-top: 8px; }
+    .kit-big b { font-size: 28px; font-weight: 800; letter-spacing: -0.02em; }
+    .kit-body { padding: 4px 20px 20px; }
+    .kit-sec { padding-top: 16px; }
+    .kit-sec + .kit-sec { margin-top: 6px; border-top: 1px solid var(--kit-line); }
+    .kit-sec h4 { font-size: 14.5px; font-weight: 700; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: baseline; gap: 8px; }
+    .kit-sec h4 small { font-size: 12px; color: var(--kit-t3); font-weight: 500; }
+    .kit-kv { display: grid; grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); gap: 8px; }
+    .kit-kv div { background: var(--kit-hover); border-radius: 10px; padding: 8px 11px; min-width: 0; }
+    .kit-kv small { display: block; font-size: 11px; color: var(--kit-t3); }
+    .kit-kv b { display: block; font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+    .kit-p { font-size: 13.5px; line-height: 1.75; color: var(--kit-t2); white-space: pre-line; }
+    .kit-rows { display: flex; flex-direction: column; }
+    .kit-row { display: flex; gap: 10px; align-items: center; padding: 9px 0; border-top: 1px solid var(--kit-line); font-size: 13px; text-decoration: none; color: inherit; }
+    .kit-row:first-child { border-top: 0; }
+    .kit-row[data-kit-go], a.kit-row { cursor: pointer; }
+    .kit-row[data-kit-go]:hover .kit-rt, a.kit-row:hover .kit-rt { color: var(--kit-accent); }
+    .kit-row .kit-rt { flex: 1; min-width: 0; line-height: 1.45; }
+    .kit-row .kit-rm { color: var(--kit-t3); font-size: 12px; white-space: nowrap; }
+    .kit-row img, .kit-row .kit-ri { width: 54px; height: 40px; border-radius: 6px; object-fit: cover; flex-shrink: 0; background: var(--kit-hover); }
+    .kit-acts { flex-shrink: 0; display: flex; gap: 10px; padding: 12px 20px 16px; border-top: 1px solid var(--kit-line); }
+    .kit-acts a, .kit-acts button { flex: 1; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 11px 12px; border-radius: 11px;
+      font: inherit; font-size: 13.5px; font-weight: 700; text-decoration: none; cursor: pointer; border: 1px solid var(--kit-line2); color: var(--kit-t1); background: transparent; }
+    .kit-acts .pri { background: var(--kit-accent); border-color: var(--kit-accent); color: #111; }
+    .kit-acts a:hover, .kit-acts button:hover { filter: brightness(1.08); }
+    /* 列表页 */
+    .kit-lhead { display: flex; align-items: center; gap: 12px; margin-bottom: 14px; }
+    .kit-back { width: 36px; height: 36px; border-radius: 50%; border: 1px solid var(--kit-line2); background: transparent; color: var(--kit-t1);
+      font-size: 20px; cursor: pointer; display: grid; place-items: center; flex-shrink: 0; }
+    .kit-back:hover { background: var(--kit-hover); }
+    .kit-lhead h2 { font-size: 22px; font-weight: 800; letter-spacing: -0.02em; }
+    .kit-lhead small { color: var(--kit-t3); font-size: 12.5px; margin-left: 2px; }
+    .kit-lbar { display: flex; justify-content: space-between; align-items: center; gap: 10px; margin-bottom: 12px; flex-wrap: wrap; }
+    .kit-chips { display: flex; gap: 8px; overflow-x: auto; scrollbar-width: none; }
+    .kit-chips a, .kit-chips button { padding: 5px 12px; border-radius: 8px; background: var(--kit-hover); color: var(--kit-t2); font: inherit; font-size: 13px;
+      font-weight: 600; white-space: nowrap; border: 0; cursor: pointer; text-decoration: none; }
+    .kit-chips .on { background: var(--kit-t1); color: var(--kit-bg); }
+    .kit-chips small { opacity: .6; margin-left: 4px; font-weight: 500; }
+    .kit-sel { padding: 6px 10px; border-radius: 9px; border: 1px solid var(--kit-line2); background: transparent; color: var(--kit-t1); font: inherit; font-size: 12.5px; font-weight: 600; }
+    .kit-sel option { background: var(--kit-bg); }
+    .kit-more { display: block; margin: 16px auto 0; padding: 9px 22px; border-radius: 10px; border: 1px solid var(--kit-line2); background: transparent;
+      color: var(--kit-t1); font: inherit; font-size: 13px; font-weight: 600; cursor: pointer; }
+    .kit-more:hover { background: var(--kit-hover); }
+    .kit-morelink { font-size: 13px; font-weight: 600; color: var(--kit-t2); text-decoration: none; white-space: nowrap; cursor: pointer; }
+    .kit-morelink:hover { color: var(--kit-t1); }
+    [data-kit-item] { cursor: pointer; }
+    @media (max-width: 760px) {
+      .kit-sheet { top: auto; left: 0; right: 0; bottom: 0; width: 100%; max-width: none; height: 86vh; border-radius: 18px 18px 0 0; animation: kit-up .26s ease-out; }
+      @keyframes kit-up { from { transform: translateY(30%); opacity: .5; } }
+      .kit-head { padding: 16px 16px 4px; } .kit-body { padding: 4px 16px 18px; } .kit-acts { padding: 10px 16px 16px; }
+      .kit-cover.tall { height: 220px; }
+      .kit-head .kit-thumb { width: 46px; height: 46px; border-radius: 12px; font-size: 22px; }
+      .kit-head h2 { font-size: 17.5px; }
+      .kit-big b { font-size: 24px; }
+      .kit-lhead h2 { font-size: 19px; }
     }
   </style>
 </head>
@@ -232,6 +342,7 @@
         <div class="filters" id="esFilters"></div>
         <div id="esList"></div>
       </section>
+      <section class="view" id="view-list"></section>
       <section class="view" id="view-sub">
         <div class="feeds" id="feeds"></div>
         <div class="panel howto">
@@ -261,6 +372,133 @@
   <div class="toast" id="toast"></div>
 
 <script>
+// ── kit：详情抽屉 + 列表页路由（各站通用，内联在页面里）──
+// 用法：
+//   KIT.item('news', id => ({ title, sub, cover, thumb, tags:[], big, body:'<div class="kit-sec">…</div>', acts:[{text, href, pri}] }))
+//   KIT.list('news', (param, query) => { … 把列表页 HTML 写进容器 … })
+//   条目元素加 data-kit-item="news/<id>" 即可点击打开详情；「查看更多」写成 <a href="#/list/news">
+//   站点首页渲染函数里先调用 KIT.route() —— 返回 true 表示当前是列表页（已渲染），首页不用再渲染
+const KIT = (() => {
+  const items = {}, lists = {};
+  let mask, homeY = 0, fromHome = 0, lastHash = location.hash, onHome = null, listBox = null;
+  const kesc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  const parse = h => {
+    const m = (h === undefined ? location.hash : h).match(/^#\/(item|list)\/([^?]+?)(?:\?(.*))?$/);
+    if (!m) return null;
+    const [type, ...rest] = m[2].split('/');
+    return { kind: m[1], type: decodeURIComponent(type), id: rest.map(decodeURIComponent).join('/'), q: new URLSearchParams(m[3] || '') };
+  };
+  function ensure() {
+    if (mask) return;
+    mask = document.createElement('div');
+    mask.className = 'kit-mask';
+    mask.innerHTML = '<div class="kit-sheet" role="dialog" aria-modal="true"></div>';
+    document.body.appendChild(mask);
+    mask.addEventListener('click', e => { if (e.target === mask || e.target.closest('[data-kit-close]')) close(); });
+  }
+  function render(d) {
+    ensure();
+    const cover = d.cover ? `<div class="kit-cover ${d.coverTall ? 'tall' : ''}" style="background-image:url('${kesc(d.cover).replace(/'/g, '%27')}')"></div>`
+      : d.coverIcon ? `<div class="kit-cover ph" style="background:${d.coverBg || 'var(--kit-hover)'}">${d.coverIcon}</div>` : '';
+    const thumb = !d.cover && !d.coverIcon && (d.thumb || d.thumbIcon)
+      ? `<div class="kit-thumb" style="${d.thumb ? `background-image:url('${kesc(d.thumb).replace(/'/g, '%27')}')` : ''}${d.thumbBg ? `;background-color:${d.thumbBg}` : ''}">${d.thumb ? '' : d.thumbIcon}</div>` : '';
+    const acts = (d.acts || []).filter(a => a && (a.href || a.onclick));
+    mask.firstElementChild.innerHTML = `<button class="kit-x" data-kit-close aria-label="关闭">✕</button>
+      <div class="kit-scroll">${cover}
+        <div class="kit-head">${thumb}<div class="kit-t"><h2>${kesc(d.title)}</h2>${d.sub ? `<div class="kit-sub">${d.sub}</div>` : ''}
+          ${(d.tags || []).filter(Boolean).length ? `<div class="kit-tags">${d.tags.filter(Boolean).join('')}</div>` : ''}${d.big ? `<div class="kit-big">${d.big}</div>` : ''}</div></div>
+        <div class="kit-body">${d.body || ''}</div></div>
+      ${acts.length ? `<div class="kit-acts">${acts.map((a, i) => a.href
+        ? `<a class="${a.pri || (i === 0 && acts.length < 3) ? 'pri' : ''}" href="${kesc(a.href)}" ${a.self ? '' : 'target="_blank" rel="noopener"'}>${a.text}</a>`
+        : `<button class="${a.pri ? 'pri' : ''}" data-kit-act="${i}">${a.text}</button>`).join('')}</div>` : ''}`;
+    acts.forEach((a, i) => { if (!a.href) { const b = mask.querySelector(`[data-kit-act="${i}"]`); if (b) b.onclick = a.onclick; } });
+    mask.querySelector('.kit-scroll').scrollTop = 0;
+    mask.classList.add('open');
+    document.body.style.overflow = 'hidden';
+  }
+  // 打开详情：写进地址（可分享；浏览器返回 = 关闭）
+  function open(key) {
+    const target = '#/item/' + key;
+    if (location.hash === target) return show(parse(target));
+    ensure();
+    if (parse()?.kind === 'item') history.replaceState(history.state, '', target);
+    else { mask.dataset.base = location.hash; history.pushState({ kit: 1 }, '', target); }
+    lastHash = target;
+    show(parse(target));
+  }
+  function show(r) {
+    const fn = items[r.type];
+    const d = fn && fn(r.id, r.q);
+    if (!d) { close(true); return false; }
+    render(d);
+    return true;
+  }
+  function close(silent) {
+    if (!mask || !mask.classList.contains('open')) return;
+    mask.classList.remove('open');
+    document.body.style.overflow = '';
+    if (!silent && parse()?.kind === 'item') {
+      if (history.state && history.state.kit) history.back();          // 从页面里点开的：退回去
+      else { history.replaceState(null, '', mask.dataset.base || location.pathname + location.search); lastHash = location.hash; }   // 直接打开的分享链接
+    }
+  }
+  // 当前地址是列表页时渲染列表页并返回 true；首页时返回 false
+  function route(box) {
+    if (box) listBox = box;
+    const r = parse();
+    if (r && r.kind === 'list' && lists[r.type]) { lists[r.type](r.id, r.q, listBox); return true; }
+    return false;
+  }
+  // 列表页的公共外壳：返回按钮 + 标题 + 子分类 + 排序
+  function shell({ title, note, chips, sort, sortVal, body, more }) {
+    return `<div class="kit-lhead"><button class="kit-back" data-kit-back title="返回">‹</button><h2>${kesc(title)}</h2>${note ? `<small>${note}</small>` : ''}</div>
+      ${chips || sort ? `<div class="kit-lbar"><div class="kit-chips">${(chips || []).map(c => `<a class="${c.on ? 'on' : ''}" href="${kesc(c.href)}">${kesc(c.text)}${c.count != null ? `<small>${c.count}</small>` : ''}</a>`).join('')}</div>
+        ${sort ? `<select class="kit-sel" data-kit-sort>${sort.map(([v, n]) => `<option value="${kesc(v)}" ${v === sortVal ? 'selected' : ''}>${kesc(n)}</option>`).join('')}</select>` : ''}</div>` : ''}
+      ${body}${more ? `<button class="kit-more" data-kit-more>${more}</button>` : ''}`;
+  }
+  function init(home) {
+    onHome = home;
+    document.addEventListener('click', e => {
+      const t = e.target.closest('[data-kit-item],[data-kit-go],[data-kit-back]');
+      if (!t) return;
+      const inner = e.target.closest('a[href],button,input,select,label,summary');   // 卡片里的其它按钮 / 链接（关注、复制…）优先
+      if (inner && inner !== t && t.contains(inner)) return;
+      e.preventDefault();
+      if (t.dataset.kitBack !== undefined) { fromHome && history.length > fromHome ? history.go(-fromHome) : (location.hash = ''); return; }
+      open(t.dataset.kitItem || t.dataset.kitGo);
+    });
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') close(); });
+    window.addEventListener('hashchange', () => {
+      const r = parse();
+      let was = parse(lastHash), steps = 1;
+      if (was && was.kind === 'item') {                                 // 从详情离开
+        const base = mask && mask.dataset.base !== undefined ? mask.dataset.base : '';
+        if (location.hash === base) { lastHash = location.hash; close(true); return; }   // 只是关掉详情，底下页面不动
+        was = parse(base); steps = 2;                                   // 在详情里点了别的列表：按详情底下那页算，返回要退两步
+      }
+      lastHash = location.hash;
+      if (r && r.kind === 'item') { show(r); return; }
+      close(true);
+      const wasHome = !was;
+      if (r && r.kind === 'list') {
+        if (wasHome) { homeY = scrollY; fromHome = steps; }
+        onHome && onHome();
+        if (wasHome || was.type !== r.type) scrollTo(0, 0);
+      } else {
+        onHome && onHome();
+        if (fromHome) { scrollTo(0, homeY); fromHome = 0; }
+      }
+    });
+    // 直接打开带 #/item/ 的链接（比如大屏跳过来）：页面数据读完后由站点调用 KIT.boot()
+  }
+  function boot() { const r = parse(); if (r && r.kind === 'item') show(r); }
+  return { item: (t, fn) => (items[t] = fn), list: (t, fn) => (lists[t] = fn), open, close, route, shell, init, boot, parse, esc: kesc,
+    // 小工具：详情里的键值格、段落、关联列表
+    kv: rows => { const r = rows.filter(x => x && x[1] != null && x[1] !== ''); return r.length ? `<div class="kit-kv">${r.map(([k, v]) => `<div><small>${kesc(k)}</small><b title="${kesc(v)}">${kesc(v)}</b></div>`).join('')}</div>` : ''; },
+    sec: (title, html, note) => html ? `<div class="kit-sec"><h4>${title}${note ? `<small>${note}</small>` : ''}</h4>${html}</div>` : '',
+    p: t => t ? `<p class="kit-p">${kesc(t)}</p>` : '',
+  };
+})();
 const $ = s => document.querySelector(s);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const store = {
@@ -269,13 +507,14 @@ const store = {
 };
 const WEEK = ['日', '一', '二', '三', '四', '五', '六'];
 const SPORTS = { football: ['⚽ 足球', 'var(--football)'], basketball: ['🏀 篮球', 'var(--basketball)'], esports: ['🎮 电竞', 'var(--esports)'], other: ['🏅 综合', 'var(--other)'] };
+const sIcon = sp => SPORTS[sp][0].split(' ')[0], sName = sp => SPORTS[sp][0].split(' ').pop();
 const GAMES = ['英雄联盟', '王者荣耀', '无畏契约', 'CS2', 'DOTA2'];
 const SITE = 'https://climb0516.github.io/match-day/';
 
 let DATA = null;
 const VIEWS = ['feed', 'league', 'esports', 'sub'];
 const state = {
-  view: VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get('view', 'feed'),   // #esports 等可直达
+  view: !location.hash.startsWith('#/') && VIEWS.includes(location.hash.slice(1)) ? location.hash.slice(1) : store.get('view', 'feed'),   // #esports 等可直达；#/item/、#/list/ 归 kit
   cat: store.get('cat', 'all'),          // all / fav / china / football / basketball / esports / other
   hideDone: store.get('hideDone', false),
   esMajor: store.get('esMajor', true),
@@ -333,7 +572,7 @@ function row(e, { showDate = false, league = true } = {}) {
   const vs = e.home || e.away
     ? `<div class="m-vs"><span class="h">${teamBtn(e.home, e.homeLogo, e.homeLogoDark)}</span>${score}<span>${teamBtn(e.away, e.awayLogo, e.awayLogoDark)}</span></div>`
     : `<div class="m-solo">${esc(e.stage || e.league)}</div>`;
-  return `<div class="m ${league ? '' : 'lg'} ${isFav(e) ? 'fav' : ''} ${st === 'post' ? 'done' : ''}">
+  return `<div class="m ${league ? '' : 'lg'} ${isFav(e) ? 'fav' : ''} ${st === 'post' ? 'done' : ''}" data-kit-item="match/${esc(encodeURIComponent(e.id))}">
     <div class="m-time num">${showDate ? `${md(e.ts)}<small>${hm(e.ts)}</small>` : hm(e.ts)}${st === 'live' ? '<small><span class="live-tag">进行中</span></small>' : ''}</div>
     ${league ? `<div class="m-lg" style="--c:${color}"><b class="${e.leagueLogo ? 'has-ic' : ''}">${logoImg(e.leagueLogo, e.leagueLogoDark, 'lg-ic')}${esc(lg)}${e.china ? '<span class="cn">中</span>' : ''}</b><span title="${esc(e.league)}">${esc(sub)}</span></div>` : ''}
     ${vs}
@@ -352,7 +591,15 @@ function timeline(list, el, emptyText) {
   for (const [k, es] of byDay) {
     const l = dayLabel(k);
     es.sort((a, b) => (isFav(b) - isFav(a)) || a.ts - b.ts);   // 当天关注的置顶
-    html += `<div class="day"><div class="day-head ${l.today ? 'today' : ''}">${l.name}<small>${l.sub} · ${es.length} 场</small></div><div class="panel list">${es.map(e => row(e)).join('')}</div></div>`;
+    // 按大类分块，每块先放 DAY_CAP 场，其余进当天列表页
+    const groups = Object.keys(SPORTS).map(sp => [sp, es.filter(e => e.sport === sp)]).filter(([, a]) => a.length);
+    const body = groups.map(([sp, a]) => {
+      const total = dayEvents(k, sp).length;
+      return (groups.length > 1 ? `<div class="cat-head" style="--c:${SPORTS[sp][1]}">${SPORTS[sp][0]}<small>${a.length} 场</small></div>` : '')
+        + a.slice(0, DAY_CAP).map(e => row(e)).join('')
+        + (total > Math.min(a.length, DAY_CAP) ? `<a class="m-more" href="#/list/day/${k}?sport=${sp}">查看当天全部 ${total} 场${sName(sp)} →</a>` : '');
+    }).join('');
+    html += `<div class="day"><div class="day-head ${l.today ? 'today' : ''}">${l.name}<small>${l.sub} · ${es.length} 场</small><a class="kit-morelink" href="#/list/day/${k}">当天全部 →</a></div><div class="panel list">${body}</div></div>`;
   }
   const maxDay = Math.max(0, ...list.map(e => Date.parse(dayKey(e.ts))));
   if (end <= maxDay) html += `<button class="more" id="moreBtn">再看 3 天</button>`;
@@ -436,17 +683,123 @@ function renderAside() {
   $('#todayBox').innerHTML = `<h3>今天 · ${md(nowTs())} 周${WEEK[bjDate(nowTs()).getUTCDay()]}</h3>
     ${Object.entries(SPORTS).map(([k, [n]]) => `<div class="kv"><span>${n}</span><b class="num">${today.filter(e => e.sport === k).length} 场</b></div>`).join('')}
     <div class="kv"><span>正在进行</span><b class="num" style="color:${live.length ? 'var(--live)' : 'inherit'}">${live.length} 场</b></div>
-    ${next ? `<div class="kv"><span>下一场${isFav(next) ? '关注' : '中国'}</span><b style="text-align:right">${md(next.ts)} ${hm(next.ts)}<br><span class="muted">${esc(next.home && next.away ? `${next.home} vs ${next.away}` : next.stage || next.league)}</span></b></div>` : ''}`;
+    ${next ? `<div class="kv" data-kit-item="match/${esc(encodeURIComponent(next.id))}"><span>下一场${isFav(next) ? '关注' : '中国'}</span><b style="text-align:right">${md(next.ts)} ${hm(next.ts)}<br><span class="muted">${esc(next.home && next.away ? `${next.home} vs ${next.away}` : next.stage || next.league)}</span></b></div>` : ''}`;
   $('#favBox').innerHTML = state.fav.size ? `<div class="favs">${[...state.fav].map(n => `<span class="fav-chip">★ ${esc(n)}<button data-unfav="${esc(n)}" title="取消关注">✕</button></span>`).join('')}</div>` : '<div class="muted">还没有关注</div>';
   $('#sources').innerHTML = (DATA.sources || []).map(s => `<div class="src"><span class="dot ${s.ok ? '' : 'bad'}"></span><span style="flex:1">${esc(s.name)}</span><span class="muted num">${s.ok ? s.count : '失败'}</span></div>`).join('');
 }
 
+let baseHash = '';   // 抽屉底下的页面地址：详情打开时，60 秒刷新 / 关注切换照旧重画底下那页
 function render() {
-  document.querySelectorAll('#viewSeg button').forEach(b => b.classList.toggle('active', b.dataset.v === state.view));
-  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === 'view-' + state.view));
-  ({ feed: renderFeed, league: renderLeague, esports: renderEsports, sub: renderSub })[state.view]();
+  if (KIT.parse()?.kind !== 'item') baseHash = location.hash;
+  const b = KIT.parse(baseHash), isList = b?.kind === 'list' && b.type === 'day';
+  document.querySelectorAll('#viewSeg button').forEach(x => x.classList.toggle('active', !isList && x.dataset.v === state.view));
+  document.querySelectorAll('.view').forEach(v => v.classList.toggle('active', v.id === (isList ? 'view-list' : 'view-' + state.view)));
+  if (isList) dayPage(b.id, b.q, $('#view-list'));
+  else ({ feed: renderFeed, league: renderLeague, esports: renderEsports, sub: renderSub })[state.view]();
   renderAside();
 }
+
+// ── 当天列表页 #/list/day/YYYY-MM-DD?sport=&lg= ──
+const DAY_CAP = 8, LPAGE = 30;
+let listN = LPAGE;
+const lgName = e => e.sport === 'esports' ? e.game : e.league;
+// 当天某大类 / 联赛的比赛（跟随「隐藏已结束」「电竞只看重点」开关），关注的置顶
+function dayEvents(key, sport, lg) {
+  return DATA.events.filter(e => dayKey(e.ts) === key && (!sport || e.sport === sport) && (!lg || lgName(e) === lg)
+    && !(state.hideDone && liveStatus(e) === 'post') && !(e.sport === 'esports' && state.esMajor && !e.major && !e.china && !isFav(e)))
+    .sort((a, b) => (isFav(b) - isFav(a)) || a.ts - b.ts);
+}
+const dayHref = (key, sport, lg) => `#/list/day/${key}` + ((sport || lg) ? '?' + new URLSearchParams(Object.entries({ sport, lg }).filter(([, v]) => v)) : '');
+function dayPage(key, q, box) {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(key)) key = todayKey();
+  const sport = SPORTS[q.get('sport')] ? q.get('sport') : '', lg = q.get('lg') || '';
+  const all = dayEvents(key, sport, lg), l = dayLabel(key);
+  const lgs = {};
+  dayEvents(key, sport).forEach(e => { lgs[lgName(e)] = (lgs[lgName(e)] || 0) + 1; });
+  const days = [...new Set(DATA.events.map(e => dayKey(e.ts)))].sort(), di = days.indexOf(key);
+  const nav = (k, t) => k ? `<a class="btn" href="${dayHref(k, sport)}">${t}</a>` : '';
+  box.innerHTML = KIT.shell({ title: `${l.name}赛程`, note: `${l.sub} · ${all.length} 场 · 北京时间`,
+    chips: [['', '全部'], ...Object.entries(SPORTS).map(([k, [n]]) => [k, n])].map(([k, n]) => ({ text: n, href: dayHref(key, k), on: k === sport, count: dayEvents(key, k).length })),
+    sort: Object.keys(lgs).length > 1 ? [['', '全部联赛'], ...Object.entries(lgs).sort((a, b) => b[1] - a[1]).map(([g, c]) => [g, `${g}（${c}）`])] : null, sortVal: lg,
+    body: `<div class="day-nav">${nav(days[di - 1], '‹ 前一天')}${nav(days[di + 1], '后一天 ›')}<span class="spacer"></span>
+        <label class="toggle"><input type="checkbox" id="hideDone" ${state.hideDone ? 'checked' : ''}>隐藏已结束</label>
+        <label class="toggle"><input type="checkbox" id="esMajor" ${state.esMajor ? 'checked' : ''}>电竞只看重点</label></div>
+      <div class="panel list">${all.slice(0, listN).map(e => row(e)).join('') || '<div class="empty">没有符合条件的比赛</div>'}</div>`,
+    more: all.length > listN ? `加载更多（${listN} / ${all.length}）` : '' });
+}
+KIT.list('day', dayPage);
+document.addEventListener('click', e => { if (e.target.closest('[data-kit-more]')) { listN += LPAGE; render(); } });
+window.addEventListener('hashchange', () => { if (KIT.parse()?.kind !== 'item') listN = LPAGE; }, true);
+
+// ── 比赛详情 #/item/match/<id> ──
+// 索引：时间线 events 优先，联赛整季赛程里其余的场次补进来（联赛页、近期战绩都能点开）
+let MI = null;
+function matchIndex() {
+  if (MI) return MI;
+  MI = { byId: new Map(), round: new Map(), all: [] };
+  for (const e of DATA.events) if (!MI.byId.has(e.id)) MI.byId.set(e.id, e);
+  for (const [name, L] of Object.entries(DATA.leagues || {})) {
+    const lo = L.logos || {};
+    L.groups.forEach(g => g.matches.forEach(m => {
+      MI.round.set(m.id, { league: name, group: g });
+      if (!MI.byId.has(m.id)) MI.byId.set(m.id, { ...m, homeLogo: lo[m.home], awayLogo: lo[m.away], sport: L.sport, league: name, stage: m.stage || g.title, tv: [], china: false, icon: sIcon(L.sport) });
+    }));
+  }
+  MI.all = [...MI.byId.values()].sort((a, b) => a.ts - b.ts);
+  return MI;
+}
+const pickLogo = (l, d) => document.documentElement.dataset.theme === 'dark' && d ? d : l;
+function mRow(e, me) {
+  const opp = me ? (e.home === me ? e.away : e.home) : '';
+  const t = me ? `vs ${esc(opp)}${e.sport === 'esports' ? '' : `<span class="muted">（${e.home === me ? '主' : '客'}）</span>`}` : esc(e.home && e.away ? `${e.home} vs ${e.away}` : e.stage || e.league);
+  const st = liveStatus(e);
+  return `<div class="kit-row" data-kit-go="match/${esc(encodeURIComponent(e.id))}"><span class="kit-rm num">${md(e.ts)} ${hm(e.ts)}</span>
+    <span class="kit-rt">${t}<span class="muted"> · ${esc(lgName(e) || '')}</span></span>
+    <span class="kit-rm num">${e.score ? `<b style="color:var(--text-1)">${esc(e.score.replace(':', '-'))}</b>` : st === 'live' ? '<span class="live-tag">进行中</span>' : st === 'post' ? '已结束' : 'VS'}</span></div>`;
+}
+// 某队近期战绩（最近 3 场）+ 后续赛程（接下来 3 场）
+function teamSec(name, self) {
+  if (!name || name === 'TBD' || name === '待定') return '';
+  const ms = matchIndex().all.filter(e => e !== self && e.id !== self.id && (e.home === name || e.away === name));
+  const past = ms.filter(e => liveStatus(e) === 'post').slice(-3).reverse(), next = ms.filter(e => liveStatus(e) !== 'post').slice(0, 3);
+  if (!past.length && !next.length) return '';
+  return KIT.sec(`${esc(name)}${state.fav.has(name) ? ' <span style="color:var(--star)">★</span>' : ''}`,
+    `<div class="kit-rows">${next.map(e => mRow(e, name)).join('')}${past.map(e => mRow(e, name)).join('')}</div>`, `后续 ${next.length} · 近期 ${past.length}`);
+}
+KIT.item('match', id => {
+  const I = matchIndex(), e = I.byId.get(id); if (!e) return null;
+  const st = liveStatus(e), sp = SPORTS[e.sport] ? e.sport : 'other', [sportName, color] = SPORTS[sp];
+  const d = bjDate(e.ts), when = `${d.getUTCFullYear()}/${md(e.ts)} 周${WEEK[d.getUTCDay()]} ${hm(e.ts)}`;
+  const left = e.ts - nowTs(), cd = left > 0 ? (left > 86400 ? `${Math.floor(left / 86400)} 天 ${Math.floor(left % 86400 / 3600)} 小时后` : `${Math.floor(left / 3600)} 小时 ${Math.floor(left % 3600 / 60)} 分后`) : '';
+  const stText = st === 'live' ? '进行中' : st === 'post' ? (e.score ? '已结束' : '已结束 · 比分待更新') : cd + '开赛';
+  const side = (name, full, logo, dark) => {
+    const tbd = !name || name === 'TBD' || name === '待定';
+    return `<div class="mdv-side">${logo ? logoImg(logo, dark, 'mdv-logo') : `<span class="mdv-ph">${esc((name || '?').slice(0, 1))}</span>`}
+      <button class="team ${tbd ? 'tbd' : ''} ${state.fav.has(name) ? 'star' : ''}" ${tbd ? '' : `data-team="${esc(name)}"`} title="${tbd ? '对阵未定' : '点击关注 / 取消关注'}"><span>${esc(name || '待定')}</span></button>
+      ${full && full !== name ? `<span class="mdv-full">${esc(full)}</span>` : ''}</div>`;
+  };
+  const vs = e.home || e.away
+    ? `<div class="mdv">${side(e.home, e.homeFull, e.homeLogo, e.homeLogoDark)}
+        <div><div class="mdv-score num ${e.score ? '' : 'vs'}">${e.score ? esc(e.score.replace(':', ' - ')) : 'VS'}</div><div class="mdv-st ${st === 'live' ? 'live' : ''}">${stText}</div></div>
+        ${side(e.away, e.awayFull, e.awayLogo, e.awayLogoDark)}</div>`
+    : `<div class="mdv-solo">${esc(e.stage || e.league)}</div><div class="mdv-st ${st === 'live' ? 'live' : ''}">${stText}</div>`;
+  const rd = I.round.get(e.id);
+  const roundMs = rd ? rd.group.matches.filter(m => m.id !== e.id).map(m => I.byId.get(m.id)).filter(Boolean).sort((a, b) => a.ts - b.ts) : [];
+  const lgLogo = pickLogo(e.leagueLogo, e.leagueLogoDark);
+  const title = e.home && e.away ? `${e.home} vs ${e.away}` : (e.stage || e.league);
+  return { title, sub: `${when} · 北京时间`,
+    ...(lgLogo ? { thumb: lgLogo } : { thumbIcon: sIcon(sp), thumbBg: `color-mix(in srgb, ${color} 18%, transparent)` }),
+    tags: [`<span style="color:${color}">${sportName}</span>`, `<span>${esc(lgName(e))}</span>`, e.bo ? `<span>BO${e.bo}</span>` : '', e.china ? '<span style="color:var(--cn)">中国</span>' : '',
+      e.major ? '<span>重点赛事</span>' : '', isFav(e) ? '<span style="color:var(--star)">★ 关注</span>' : ''],
+    body: vs
+      + KIT.sec('比赛信息', KIT.kv([['开赛时间', `${md(e.ts)} ${hm(e.ts)}`], ['状态', stText], ['赛事', e.league], ['阶段', e.stage && e.stage !== e.league && e.stage !== `Bo${e.bo}` ? e.stage : ''],
+          ['赛制', e.bo ? `BO${e.bo}` : ''], ['比分', e.score ? e.score.replace(':', '-') : ''], ['转播', (e.tv || []).join(' · ')]]))
+      + teamSec(e.home, e) + teamSec(e.away, e)
+      + (roundMs.length ? KIT.sec(`${esc(rd.league)} · ${esc(rd.group.title)} 其它比赛`, `<div class="kit-rows">${roundMs.slice(0, 12).map(x => mRow(x)).join('')}</div>`, `${roundMs.length} 场`) : '')
+      + KIT.sec('说明', KIT.p(`时间为北京时间；「进行中」按开赛时间估算，比分每 2 小时随数据更新。点上面的队名可以关注 / 取消关注。`)),
+    acts: [st !== 'post' ? { text: '📅 加到日历', pri: true, onclick: () => downloadIcs(e) } : null,
+      e.url ? { text: e.sport === 'esports' ? '赛事页 ↗' : '比赛页 ↗', href: e.url } : null] };
+});
 
 // ── 单场 ICS ──
 function downloadIcs(e) {
@@ -475,24 +828,31 @@ function toggleFav(name) {
   store.set('fav', [...state.fav]);
   toast(state.fav.has(name) ? `已关注 ${name}` : `已取消关注 ${name}`);
   render();
+  const r = KIT.parse();                         // 在详情里点的：重画抽屉，保持滚动位置
+  if (r?.kind === 'item') { const y = $('.kit-scroll')?.scrollTop || 0; KIT.open(r.type + '/' + r.id); $('.kit-scroll') && ($('.kit-scroll').scrollTop = y); }
 }
 
 // ── 事件 ──
 document.addEventListener('click', ev => {
   const t = ev.target;
   let b;
-  if ((b = t.closest('#viewSeg button'))) { state.view = b.dataset.v; state.days = 4; store.set('view', state.view); history.replaceState(null, '', '#' + state.view); render(); scrollTo(0, 0); }
+  if ((b = t.closest('#viewSeg button'))) {
+    state.view = b.dataset.v; state.days = 4; store.set('view', state.view);
+    if (KIT.parse()) { location.hash = state.view; return; }   // 在列表页 / 详情里：走 hashchange 回到对应视图
+    history.replaceState(null, '', '#' + state.view); render(); scrollTo(0, 0);
+  }
   else if ((b = t.closest('[data-cat]'))) { state.cat = b.dataset.cat; store.set('cat', state.cat); render(); }
   else if ((b = t.closest('[data-game]'))) { state.game = b.dataset.game; store.set('game', state.game); render(); }
   else if ((b = t.closest('[data-league]'))) { state.league = b.dataset.league; store.set('league', state.league); render(); }
   else if ((b = t.closest('[data-team]'))) toggleFav(b.dataset.team);
   else if ((b = t.closest('[data-unfav]'))) toggleFav(b.dataset.unfav);
-  else if ((b = t.closest('[data-ics]'))) { const e = DATA.events.find(x => x.id === b.dataset.ics); if (e) downloadIcs(e); }
+  else if ((b = t.closest('[data-ics]'))) { const e = matchIndex().byId.get(b.dataset.ics); if (e) downloadIcs(e); }
   else if ((b = t.closest('[data-copy]'))) navigator.clipboard?.writeText(b.dataset.copy).then(() => toast('链接已复制'), () => toast('复制失败'));
 });
 document.addEventListener('change', ev => {
   const id = ev.target.id;
   if (id === 'hideDone') { state.hideDone = ev.target.checked; store.set('hideDone', state.hideDone); render(); }
+  if (ev.target.matches('[data-kit-sort]')) { const r = KIT.parse(); location.hash = dayHref(r.id, r.q.get('sport'), ev.target.value); }
   if (id === 'esMajor' || id === 'esMajor2') { state.esMajor = ev.target.checked; store.set('esMajor', state.esMajor); render(); }
 });
 
@@ -510,13 +870,16 @@ async function load() {
     DATA = await r.json();
     const u = new Date(DATA.updated);
     $('#updated').textContent = `更新于 ${u.getMonth() + 1}/${u.getDate()} ${String(u.getHours()).padStart(2, '0')}:${String(u.getMinutes()).padStart(2, '0')}`;
+    MI = null;
     render();
+    KIT.boot();
   } catch (err) {
     $('#updated').textContent = '数据读取失败';
     console.error(err);
   } finally { btn.classList.remove('spin'); }
 }
 $('#reloadBtn').onclick = load;
+KIT.init(render);
 setInterval(() => DATA && render(), 60e3);      // 每分钟刷新「进行中」状态
 load();
 </script>

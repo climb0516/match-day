@@ -222,11 +222,14 @@ def zhibo8_home():
                 home, away = " ".join(text(sides[0])), " ".join(text(sides[1]))
                 img = lambda x: (re.search(r'<img[^>]+src="([^"]+)"', x) or [None, ""])[1]
                 hl, al = img(sides[0]), img(sides[1])
+        # 比赛页：「文字」等链接指向 /zhibo/<类>/<年>/match<id>….htm，去掉 ?redirect 等参数
+        page = re.search(r'href="((?:https?:)?(?://www\.zhibo8\.com)?/zhibo/[^"?]*match' + sid + r'[^"?]*\.htm)', body)
+        url = urllib.parse.urljoin("https://www.zhibo8.com/", page.group(1)) if page else ""
         tv = []
         for a in re.findall(r"<a [^>]*>(.*?)</a>", body):
             tv += [x for x in text(a) if x not in NOT_TV]
         out.append({"id": "zb" + sid, "ts": ts, "type": typ, "labels": label.split(","), "league": league,
-                    "home": home, "away": away, "hl": hl, "al": al, "tv": list(dict.fromkeys(tv))[:4]})
+                    "home": home, "away": away, "hl": hl, "al": al, "tv": list(dict.fromkeys(tv))[:4], "url": url})
     if not out:
         raise ValueError("empty")
     return out
@@ -247,6 +250,7 @@ def liquipedia(wiki):
         scores = re.findall(r'scoreholder-score[^"]*">([^<]*)', blk)
         bo = re.search(r"\(Bo(\d+)\)", blk)
         tour = re.search(r'match-info-tournament-name"><a [^>]*><span>([^<]+)', blk)
+        tour_href = re.search(r'match-info-tournament-name"><a href="(/[^"#]+)', blk)   # 赛事页（去掉 #日期锚点）
         head, _, tail = blk.partition('<div class="match-info-tournament">')
         opp = [lq_imgs(x) for x in head.split('<div class="match-info-header-opponent')[1:3]]
         opp = (opp + [(None, None)] * 2)[:2]
@@ -256,7 +260,8 @@ def liquipedia(wiki):
                     "homeFull": html.unescape(teams[0][0]).replace(" (page does not exist)", ""),
                     "awayFull": html.unescape(teams[1][0]).replace(" (page does not exist)", ""),
                     "score": ":".join(scores[:2]) if len(scores) >= 2 and all(s.strip() for s in scores[:2]) else "",
-                    "bo": int(bo.group(1)) if bo else None, "tour": html.unescape(tour.group(1)) if tour else ""})
+                    "bo": int(bo.group(1)) if bo else None, "tour": html.unescape(tour.group(1)) if tour else "",
+                    "url": "https://liquipedia.net" + html.unescape(tour_href.group(1)) if tour_href else ""})
     if not out:
         raise ValueError("empty")
     # 同一场比赛会同时出现在两个区（倒计时 / 已结束），按时间 + 对阵去重，优先带比分的
@@ -371,6 +376,8 @@ def main():
                         {h["home"], h["away"]} == {e["home"], e["away"]}), None)
             if hit:
                 hit["tv"] = h["tv"]
+                if h["url"]:
+                    hit["url"] = h["url"]
                 side = {h["home"]: h["hl"], h["away"]: h["al"]}
                 hit["homeLogo"] = hit.get("homeLogo") or logos.want(side.get(hit["home"]))
                 hit["awayLogo"] = hit.get("awayLogo") or logos.want(side.get(hit["away"]))
@@ -384,7 +391,7 @@ def main():
                            "league": h["labels"][0] if sport == "other" and h["labels"] else h["league"],
                            "stage": h["league"], "home": h["home"], "away": h["away"],
                            "homeLogo": logos.want(h["hl"]), "awayLogo": logos.want(h["al"]), "score": "",
-                           "status": status(h["ts"], False, 2.5), "tv": h["tv"],
+                           "status": status(h["ts"], False, 2.5), "tv": h["tv"], "url": h["url"],
                            "china": bool(CN_TEXT.search(" ".join(h["labels"]) + h["home"] + h["away"]))})
 
     # 3. 电竞：Liquipedia 限流（parse 请求间隔 ≥ 30 秒）
@@ -419,7 +426,7 @@ def main():
                            "stage": f'Bo{m["bo"]}' if m["bo"] else "", "home": m["home"], "away": m["away"],
                            "homeFull": m["homeFull"], "awayFull": m["awayFull"], "_m": m, "score": m["score"],
                            "status": status(m["ts"], bool(m["score"]), (m["bo"] or 1) * 0.8 + 0.3),
-                           "bo": m["bo"], "tv": [], "major": bool(re.search(key, m["tour"])), "china": china})
+                           "bo": m["bo"], "tv": [], "url": m["url"], "major": bool(re.search(key, m["tour"])), "china": china})
         queue_es_logos(events[n0:])
 
     # 队徽：电竞阶段已经和限流等待重叠下载了大半，这里最多再等 30 秒，剩下的下次运行补
